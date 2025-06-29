@@ -1,0 +1,32 @@
+# Core requirements
+streamlit==1.28.1
+langchain>=0.0.300
+langchain-google-genai>=1.0.0
+langchain-core>=0.1.0
+pandas>=2.0.0
+python-dotenv>=1.0.0
+google-generativeai>=0.3.0
+fastapi
+uvicorn
+pydantic
+openai
+
+# Audio processing requirements
+gtts>=2.3.0
+SpeechRecognition>=3.10.0
+pydub>=0.25.1
+pygame>=2.0.0
+
+# Optional audio components for Streamlit
+git+https://github.com/stefanrmmr/streamlit_audio_recorder.git
+
+# Additional audio dependencies
+pyaudio>=0.2.11
+ffmpeg-python>=0.2.0
+
+# For better audio support on different OS
+playsound>=1.3.0
+simpleaudio>=1.0.4
+
+# Excel reading
+openpyxl>=3.1.0

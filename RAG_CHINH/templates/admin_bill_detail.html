@@ -1,0 +1,30 @@
+{% if not bill %}
+  <h2>Chưa có hóa đơn nào cho user: {{ user_id }}</h2>
+  <a href="{{ url_for('admin_bills') }}">&larr; Quay lại danh sách bill</a>
+{% else %}
+<h2>Chi tiết hóa đơn của User: {{ bill['order_id'] }}</h2>
+<p>Trạng thái: <b>{{ bill.get('status', 'pending') }}</b></p>
+<form method="post" action="{{ url_for('admin_bill_update_status', user_id=bill['order_id']) }}">
+    <label>Cập nhật trạng thái: </label>
+    <select name="status">
+        <option value="pending" {% if bill.get('status') == 'pending' %}selected{% endif %}>Chờ xử lý</option>
+        <option value="in_progress" {% if bill.get('status') == 'in_progress' %}selected{% endif %}>Đang làm</option>
+        <option value="done" {% if bill.get('status') == 'done' %}selected{% endif %}>Đã xong</option>
+    </select>
+    <button type="submit">Cập nhật</button>
+</form>
+<h3>Danh sách món:</h3>
+<ul>
+    {% for item in bill['items'] %}
+    <li>{{ item['dish'] }} x{{ item['quantity'] }} - {{ item['amount'] | int | string }} đ
+        {% if item.note or item['note'] %}<br><i>Ghi chú: {{ item.note or item['note'] }}</i>{% endif %}
+        <form method="post" action="{{ url_for('admin_remove_item', user_id=bill['user_id']) }}" style="display:inline;">
+            <input type="hidden" name="dish_name" value="{{ item['dish'] }}">
+            <button type="submit" onclick="return confirm('Bạn chắc chắn muốn xóa món này?')">Xóa</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+<p><b>Tổng cộng: {{ bill['total'] | int | string }} đ</b></p>
+<a href="{{ url_for('admin_bills') }}">&larr; Quay lại danh sách bill</a>
+{% endif %} 

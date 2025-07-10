@@ -1,0 +1,19 @@
+<h2>Danh sách hóa đơn (Bill) đang chờ</h2>
+<table border="1" cellpadding="8">
+    <tr>
+        <th>User ID</th>
+        <th>Order ID</th>
+        <th>Tổng tiền</th>
+        <th>Trạng thái</th>
+        <th>Chi tiết</th>
+    </tr>
+    {% for bill in bills %}
+    <tr>
+        <td>{{ bill['user_id'] }}</td>
+        <td>{{ bill['order_id'] }}</td>
+        <td>{{ bill['total'] | default(0) | int | string }} đ</td>
+        <td>{{ bill.get('status', 'pending') }}</td>
+        <td><a href="{{ url_for('admin_bill_detail', user_id=bill['user_id']) }}">Xem chi tiết</a></td>
+    </tr>
+    {% endfor %}
+</table> 

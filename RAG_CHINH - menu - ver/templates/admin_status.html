@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý trạng thái món ăn</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { background: #f8f9fa; }
+        .dish-card { box-shadow: 0 2px 12px #0001; border-radius: 16px; background: #fff; margin-bottom: 24px; transition: box-shadow 0.2s; }
+        .dish-card:hover { box-shadow: 0 4px 24px #007bff22; }
+        .dish-img { width: 100%; height: 140px; object-fit: cover; border-radius: 16px 16px 0 0; }
+        .dish-info { padding: 16px; }
+        .dish-title { font-size: 1.1rem; font-weight: 600; color: #007bff; }
+        .dish-price { color: #28a745; font-weight: bold; font-size: 1.05rem; }
+        .dish-desc { color: #555; font-size: 0.97rem; margin-bottom: 8px; }
+        .switch-status { float: right; }
+        .badge-off { background: #dc3545; }
+        .badge-on { background: #28a745; }
+    </style>
+</head>
+<body>
+<div class="container py-4">
+    <h2 class="mb-4 text-center">Quản lý trạng thái món ăn</h2>
+    <div class="row mb-3">
+        <div class="col-12 col-md-6 mx-auto">
+            <input type="text" class="form-control" id="search-input" placeholder="🔍 Tìm món ăn...">
+        </div>
+    </div>
+    <div class="row" id="dish-list">
+        {% for dish in dishes %}
+        <div class="col-12 col-md-6 col-lg-4 dish-item" data-name="{{ dish.name|lower }}" data-desc="{{ dish.description|lower }}">
+            <div class="dish-card position-relative">
+                <img class="dish-img" src="{{ dish.image or 'https://via.placeholder.com/400x140?text=No+Image' }}" alt="{{ dish.name }}">
+                <div class="dish-info">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="dish-title">{{ dish.name }}</span>
+                        <span class="dish-price">{{ dish.price | default(0) | int | string }} đ</span>
+                    </div>
+                    <div class="dish-desc">{{ dish.description }}</div>
+                    <div class="mb-2">
+                        <span class="badge {{ 'badge-on' if dish.status else 'badge-off' }}">{{ 'Đang bán' if dish.status else 'Tạm hết món' }}</span>
+                        <div class="form-check form-switch switch-status d-inline-block ms-2">
+                            <input class="form-check-input" type="checkbox" id="switch-{{ loop.index }}" {% if dish.status %}checked{% endif %} onchange="toggleDishStatus('{{ dish.name }}', this.checked)">
+                            <label class="form-check-label" for="switch-{{ loop.index }}">{{ 'Bật' if dish.status else 'Tắt' }}</label>
+                        </div>
+                    </div>
+                    <div style="font-size:0.95em;color:#888;">{{ dish.dish_type }} | {{ dish.meal_category }} | {{ dish.region }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function toggleDishStatus(name, status) {
+    fetch('/api/admin/dish_status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, status: status })
+    }).then(res => res.json()).then(data => {
+        if (!data.success) {
+            alert('Có lỗi khi cập nhật trạng thái món!');
+        } else {
+            location.reload();
+        }
+    });
+}
+// Thanh tìm kiếm món ăn
+const searchInput = document.getElementById('search-input');
+searchInput.addEventListener('input', function() {
+    const keyword = this.value.trim().toLowerCase();
+    document.querySelectorAll('.dish-item').forEach(function(item) {
+        const name = item.getAttribute('data-name');
+        const desc = item.getAttribute('data-desc');
+        if (!keyword || name.includes(keyword) || desc.includes(keyword)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+</script>
+</body>
+</html> 

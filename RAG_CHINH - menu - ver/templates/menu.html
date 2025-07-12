@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Nhà Hàng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { background: #f8f9fa; }
+        .menu-header { background: linear-gradient(90deg,#007bff 60%,#00c6ff 100%); color: #fff; border-radius: 0 0 24px 24px; padding: 32px 0 18px 0; text-align: center; margin-bottom: 24px; }
+        .menu-header h1 { font-size: 2.2rem; font-weight: 700; }
+        .menu-header .desc { font-size: 1.1rem; color: #eaf6ff; }
+        .dish-card { box-shadow: 0 2px 12px #0001; border-radius: 16px; background: #fff; margin-bottom: 24px; transition: box-shadow 0.2s; }
+        .dish-card:hover { box-shadow: 0 4px 24px #007bff22; }
+        .dish-img { width: 100%; height: 160px; object-fit: cover; border-radius: 16px 16px 0 0; }
+        .dish-info { padding: 16px; }
+        .dish-title { font-size: 1.2rem; font-weight: 600; color: #007bff; }
+        .dish-price { color: #28a745; font-weight: bold; font-size: 1.1rem; }
+        .dish-desc { color: #555; font-size: 0.98rem; margin-bottom: 8px; }
+        .qty-group { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+        .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: none; background: #e3f0ff; color: #007bff; font-size: 1.2rem; }
+        .qty-btn:active { background: #b6e0ff; }
+        .qty-input { width: 40px; text-align: center; border: 1px solid #ddd; border-radius: 8px; }
+        .select-checkbox { accent-color: #007bff; width: 20px; height: 20px; }
+        .order-btn { margin: 32px auto 0 auto; display: block; font-size: 1.2rem; padding: 12px 36px; border-radius: 24px; }
+        @media (max-width: 600px) {
+            .dish-img { height: 120px; }
+            .menu-header { padding: 18px 0 10px 0; }
+        }
+    </style>
+</head>
+<body>
+<div class="menu-header">
+    <h1>Menu Nhà Hàng</h1>
+    <div class="desc">Chọn món bạn muốn gọi, tick chọn và nhấn "Gửi order"!</div>
+</div>
+<div class="container">
+    <!-- Thanh tìm kiếm, dropdown filter nâng cao -->
+    <div class="row mb-3 align-items-end">
+        <div class="col-12 col-lg-3 mb-2 mb-lg-0">
+            <div class="dropdown">
+                <button class="btn btn-outline-primary dropdown-toggle w-100" type="button" id="dropdownType" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span id="dropdownTypeLabel">Loại món: Tất cả</span>
+                </button>
+                <ul class="dropdown-menu w-100" id="dropdown-type-list"></ul>
+            </div>
+        </div>
+        <div class="col-6 col-lg-2 mb-2 mb-lg-0">
+            <div class="dropdown">
+                <button class="btn btn-outline-success dropdown-toggle w-100" type="button" id="dropdownMeal" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span id="dropdownMealLabel">Chay/Mặn: Tất cả</span>
+                </button>
+                <ul class="dropdown-menu w-100" id="dropdown-meal-list"></ul>
+            </div>
+        </div>
+        <div class="col-6 col-lg-2 mb-2 mb-lg-0">
+            <div class="dropdown">
+                <button class="btn btn-outline-info dropdown-toggle w-100" type="button" id="dropdownRegion" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span id="dropdownRegionLabel">Vùng miền: Tất cả</span>
+                </button>
+                <ul class="dropdown-menu w-100" id="dropdown-region-list"></ul>
+            </div>
+        </div>
+        <div class="col-6 col-lg-2">
+            <select class="form-select" id="sort-select">
+                <option value="">Sắp xếp</option>
+                <option value="price-asc">Giá tăng dần</option>
+                <option value="price-desc">Giá giảm dần</option>
+                <option value="featured">Món nổi bật</option>
+                <option value="new">Món mới</option>
+            </select>
+        </div>
+        <div class="col-6 col-lg-3">
+            <input type="text" class="form-control" id="search-input" placeholder="🔍 Tìm món ăn...">
+        </div>
+    </div>
+    <div class="row" id="dish-list">
+        <!-- Danh sách món ăn sẽ được render ở đây bằng JS -->
+    </div>
+    <button class="btn btn-primary order-btn" id="order-btn">Gửi order</button>
+</div>
+<!-- Nút mở chatbot (icon nhỏ góc phải dưới) -->
+<button id="open-chatbot-btn" style="position:fixed;bottom:28px;right:28px;z-index:9999;background:#007bff;color:#fff;border:none;border-radius:50%;width:60px;height:60px;box-shadow:0 2px 8px #0003;font-size:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+    <i class="fas fa-comments"></i>
+</button>
+<!-- Modal chatbot -->
+<div class="modal fade" id="chatbotModal" tabindex="-1" aria-labelledby="chatbotModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:18px;overflow:hidden;">
+      <div class="modal-body p-0" style="background:transparent;">
+        <iframe id="chatbot-iframe" src="/chatbot-popup" style="width:100%;height:600px;border:none;background:transparent;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Icon giỏ hàng góc phải trên -->
+<button id="open-cart-btn" style="position:fixed;top:28px;right:28px;z-index:9999;background:#fff;color:#007bff;border:none;border-radius:50%;width:54px;height:54px;box-shadow:0 2px 8px #0003;font-size:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+    <i class="fas fa-shopping-cart"></i>
+</button>
+<!-- Modal giỏ hàng -->
+<div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:18px;overflow:hidden;min-width:340px;">
+      <div class="modal-header">
+        <h5 class="modal-title" id="cartModalLabel">Giỏ hàng của bạn</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0" id="cart-body">
+        <!-- Nội dung giỏ hàng sẽ render ở đây bằng JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Thêm modal QR chuyển khoản -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:18px;overflow:hidden;min-width:340px;">
+      <div class="modal-header">
+        <h5 class="modal-title" id="qrModalLabel">Thanh toán chuyển khoản</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="qr-modal-body">
+        <!-- QR sẽ render ở đây -->
+        <div class="text-center text-muted">Đang lấy mã QR...</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Lấy danh sách món ăn từ API
+async function fetchDishes() {
+    const res = await fetch('/api/dishes');
+    return await res.json();
+}
+let allDishes = [];
+let currentType = 'Tất cả';
+let currentMeal = 'Tất cả';
+let currentRegion = 'Tất cả';
+let searchKeyword = '';
+let currentSort = '';
+let lastDishesJson = '';
+function renderDropdowns(dishes) {
+    // Loại món
+    const types = Array.from(new Set(dishes.map(d => d.dish_type && d.dish_type.trim() ? d.dish_type.trim() : 'Khác')));
+    types.unshift('Tất cả');
+    const typeList = document.getElementById('dropdown-type-list');
+    typeList.innerHTML = types.map(type => {
+        const safeType = type.replace(/'/g, "\\'");
+        return `<li><a class="dropdown-item${type === currentType ? ' active' : ''}" href="#" onclick="selectType('${safeType}');return false;">${type}</a></li>`;
+    }).join('');
+    document.getElementById('dropdownTypeLabel').textContent = 'Loại món: ' + currentType;
+    // Chay/Mặn
+    const meals = Array.from(new Set(dishes.map(d => d.meal_category && d.meal_category.trim() ? d.meal_category.trim() : 'Khác')));
+    meals.unshift('Tất cả');
+    const mealList = document.getElementById('dropdown-meal-list');
+    mealList.innerHTML = meals.map(meal => {
+        const safeMeal = meal.replace(/'/g, "\\'");
+        return `<li><a class="dropdown-item${meal === currentMeal ? ' active' : ''}" href="#" onclick="selectMeal('${safeMeal}');return false;">${meal}</a></li>`;
+    }).join('');
+    document.getElementById('dropdownMealLabel').textContent = 'Chay/Mặn: ' + currentMeal;
+    // Vùng miền
+    const regions = Array.from(new Set(dishes.map(d => d.region && d.region.trim() ? d.region.trim() : 'Khác')));
+    regions.unshift('Tất cả');
+    const regionList = document.getElementById('dropdown-region-list');
+    regionList.innerHTML = regions.map(region => {
+        const safeRegion = region.replace(/'/g, "\\'");
+        return `<li><a class="dropdown-item${region === currentRegion ? ' active' : ''}" href="#" onclick="selectRegion('${safeRegion}');return false;">${region}</a></li>`;
+    }).join('');
+    document.getElementById('dropdownRegionLabel').textContent = 'Vùng miền: ' + currentRegion;
+}
+window.selectType = function(type) {
+    currentType = type;
+    renderDropdowns(allDishes);
+    renderDishes(allDishes);
+}
+window.selectMeal = function(meal) {
+    currentMeal = meal;
+    renderDropdowns(allDishes);
+    renderDishes(allDishes);
+}
+window.selectRegion = function(region) {
+    currentRegion = region;
+    renderDropdowns(allDishes);
+    renderDishes(allDishes);
+}
+document.getElementById('search-input').addEventListener('input', function(e) {
+    searchKeyword = e.target.value.trim().toLowerCase();
+    renderDishes(allDishes);
+});
+document.getElementById('sort-select').addEventListener('change', function(e) {
+    currentSort = e.target.value;
+    renderDishes(allDishes);
+});
+function renderDishes(dishes) {
+    const dishList = document.getElementById('dish-list');
+    dishList.innerHTML = '';
+    let filtered = dishes;
+    if (currentType && currentType !== 'Tất cả') {
+        filtered = filtered.filter(d => (d.dish_type && d.dish_type.trim() === currentType));
+    }
+    if (currentMeal && currentMeal !== 'Tất cả') {
+        filtered = filtered.filter(d => (d.meal_category && d.meal_category.trim() === currentMeal));
+    }
+    if (currentRegion && currentRegion !== 'Tất cả') {
+        filtered = filtered.filter(d => (d.region && d.region.trim() === currentRegion));
+    }
+    if (searchKeyword) {
+        filtered = filtered.filter(d => d.name.toLowerCase().includes(searchKeyword) || (d.description && d.description.toLowerCase().includes(searchKeyword)));
+    }
+    // Sắp xếp/filter nâng cao
+    let featuredDishes = dishes.slice().sort((a, b) => (b.price || 0) - (a.price || 0)).slice(0, 8).map(d => d.name);
+    let newDishes = dishes.slice().sort((a, b) => b.name.localeCompare(a.name)).slice(0, 8).map(d => d.name);
+    if (currentSort === 'price-asc') {
+        filtered = filtered.slice().sort((a, b) => (a.price || 0) - (b.price || 0));
+    } else if (currentSort === 'price-desc') {
+        filtered = filtered.slice().sort((a, b) => (b.price || 0) - (a.price || 0));
+    } else if (currentSort === 'featured') {
+        filtered = filtered.slice().sort((a, b) => (b.price || 0) - (a.price || 0)).slice(0, 8); // Món nổi bật: giá cao nhất
+    } else if (currentSort === 'new') {
+        filtered = filtered.slice().sort((a, b) => b.name.localeCompare(a.name)).slice(0, 8); // Món mới: tên lớn nhất
+    }
+    if (!filtered.length) {
+        dishList.innerHTML = '<div class="text-center text-muted py-5">Không tìm thấy món nào phù hợp.</div>';
+        window._currentRenderedDishes = [];
+        return;
+    }
+    window._currentRenderedDishes = filtered;
+    filtered.forEach((dish, idx) => {
+        let tagHtml = '';
+        if (featuredDishes.includes(dish.name)) {
+            tagHtml += '<span class="badge bg-warning text-dark position-absolute top-0 end-0 m-2">Nổi bật</span>';
+        }
+        if (newDishes.includes(dish.name)) {
+            tagHtml += '<span class="badge bg-success position-absolute top-0 start-0 m-2">Mới</span>';
+        }
+        if (dish.status === false) {
+            tagHtml += '<span class="badge bg-danger position-absolute top-50 start-50 translate-middle">Tạm hết món</span>';
+        }
+        const col = document.createElement('div');
+        col.className = 'col-12 col-md-6 col-lg-4';
+        col.innerHTML = `
+        <div class="dish-card position-relative${dish.status === false ? ' opacity-50' : ''}">
+            ${tagHtml}
+            <img class="dish-img" src="${dish.image || 'https://via.placeholder.com/400x160?text=No+Image'}" alt="${dish.name}">
+            <div class="dish-info">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="dish-title">${dish.name}</span>
+                    <span class="dish-price">${dish.price ? dish.price.toLocaleString() + ' đ' : ''}</span>
+                </div>
+                <div class="dish-desc">${dish.description || ''}</div>
+                <div class="form-check">
+                    ${dish.status === false ? '' : `<input class="form-check-input select-checkbox" type="checkbox" value="" id="select-${idx}">`}
+                    ${dish.status === false ? '' : `<label class="form-check-label" for="select-${idx}">Chọn món này</label>`}
+                </div>
+                <div class="qty-group">
+                    <button class="qty-btn" type="button" onclick="changeQty(${idx}, -1)" ${dish.status === false ? 'disabled' : ''}>-</button>
+                    <input class="qty-input" type="number" min="1" value="1" id="qty-${idx}" ${dish.status === false ? 'disabled' : ''}>
+                    <button class="qty-btn" type="button" onclick="changeQty(${idx}, 1)" ${dish.status === false ? 'disabled' : ''}>+</button>
+                </div>
+            </div>
+        </div>
+        `;
+        dishList.appendChild(col);
+    });
+}
+function startMenuPolling() {
+    setInterval(async () => {
+        // Nếu có input ghi chú đang focus, không update menu
+        if (document.activeElement && document.activeElement.classList.contains('note-input-focus')) return;
+        const dishes = await fetchDishes();
+        const newJson = JSON.stringify(dishes);
+        if (newJson !== lastDishesJson) {
+            allDishes = dishes;
+            renderDropdowns(dishes);
+            renderDishes(dishes);
+            lastDishesJson = newJson;
+        }
+    }, 1000);
+}
+document.addEventListener('DOMContentLoaded', async () => {
+    const dishes = await fetchDishes();
+    allDishes = dishes;
+    renderDropdowns(dishes);
+    renderDishes(dishes);
+    lastDishesJson = JSON.stringify(dishes);
+    startMenuPolling();
+});
+document.getElementById('order-btn').onclick = async function() {
+    const selected = [];
+    (window._currentRenderedDishes || []).forEach((dish, idx) => {
+        const checked = document.getElementById('select-' + idx) && document.getElementById('select-' + idx).checked;
+        const qty = document.getElementById('qty-' + idx) ? parseInt(document.getElementById('qty-' + idx).value) || 1 : 1;
+        if (checked) selected.push({ name: dish.name, quantity: qty });
+    });
+    if (selected.length === 0) {
+        alert('Vui lòng chọn ít nhất một món!');
+        return;
+    }
+    // Gửi order qua API (cần backend xử lý)
+    const res = await fetch('/api/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: selected })
+    });
+    if (res.ok) {
+        alert('Đã thêm vào hóa đơn! Bạn có thể mở chatbot để chat hoặc xem hóa đơn.');
+        // Reset chọn
+        document.querySelectorAll('.select-checkbox').forEach(cb => cb.checked = false);
+    } else {
+        alert('Có lỗi khi gửi order!');
+    }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.getElementById('open-chatbot-btn').onclick = function() {
+    var modal = new bootstrap.Modal(document.getElementById('chatbotModal'));
+    modal.show();
+};
+let cartPollingInterval = null;
+
+document.getElementById('open-cart-btn').onclick = async function() {
+    await loadAndShowCartModal();
+};
+
+async function loadAndShowCartModal() {
+    // Gọi API lấy giỏ hàng
+    const res = await fetch('/api/cart');
+    const data = await res.json();
+    renderCart(data);
+    var modal = new bootstrap.Modal(document.getElementById('cartModal'));
+    modal.show();
+    // Bắt đầu polling khi modal mở
+    if (cartPollingInterval) clearInterval(cartPollingInterval);
+    cartPollingInterval = setInterval(async () => {
+        if (!document.getElementById('cartModal').classList.contains('show')) {
+            clearInterval(cartPollingInterval);
+            cartPollingInterval = null;
+            return;
+        }
+        const res = await fetch('/api/cart');
+        const data = await res.json();
+        renderCart(data);
+    }, 3000);
+}
+// Dừng polling khi modal đóng (bắt sự kiện Bootstrap)
+document.getElementById('cartModal').addEventListener('hidden.bs.modal', function () {
+    if (cartPollingInterval) clearInterval(cartPollingInterval);
+    cartPollingInterval = null;
+});
+let lastOrderStatusMap = {};
+function renderCart(cartData) {
+    // Nếu có input ghi chú đang focus, không render lại cart
+    if (document.activeElement && document.activeElement.classList.contains('note-input-focus')) {
+        return;
+    }
+    const cartBody = document.getElementById('cart-body');
+    const orders = cartData.orders || [];
+    let qrJustPaid = false;
+    // So sánh trạng thái cũ và mới để phát hiện bill vừa chuyển sang paid
+    orders.forEach(cart => {
+        const prevStatus = lastOrderStatusMap[cart.order_id];
+        if ((cart.status === 'paid' || cart.status === 'Đã thanh toán') && prevStatus && prevStatus !== 'paid' && prevStatus !== 'Đã thanh toán') {
+            // Nếu modal QR đang mở thì tự động đóng (kiểm tra kỹ hơn)
+            const qrModal = document.getElementById('qrModal');
+            if (qrModal) {
+                const isOpen = qrModal.classList.contains('show') || qrModal.getAttribute('aria-modal') === 'true' || qrModal.style.display === 'block';
+                if (isOpen) {
+                    let modal = bootstrap.Modal.getInstance(qrModal);
+                    if (!modal) modal = new bootstrap.Modal(qrModal);
+                    modal.hide();
+                    qrJustPaid = true;
+                }
+            }
+        }
+    });
+    // Cập nhật trạng thái mới nhất vào lastOrderStatusMap
+    orders.forEach(cart => {
+        lastOrderStatusMap[cart.order_id] = cart.status;
+    });
+    if (!orders.length) {
+        cartBody.innerHTML = '<div class="p-4 text-center text-muted">Bạn chưa có hóa đơn nào.</div>';
+        return;
+    }
+    let html = '';
+    let totalAll = 0;
+    orders.forEach((cart, idx) => {
+        html += `<div class='card mb-4 shadow-sm'>`;
+        html += `<div class='card-header d-flex justify-content-between align-items-center'>`;
+        html += `<span><b>Hóa đơn #${idx + 1}</b> (${cart.created_at || ''})</span>`;
+        html += `<span class='badge bg-${getStatusColor(cart.status)}'>${getStatusText(cart.status)}</span>`;
+        html += `</div><div class='card-body p-0'>`;
+        html += '<table class="table table-bordered mb-0"><thead><tr><th>Món</th><th>SL</th><th>Giá</th><th>Thành tiền</th><th>Ghi chú</th><th></th></tr></thead><tbody>';
+        cart.items.forEach(item => {
+            html += `<tr><td>${item.dish}</td><td>${item.quantity}</td><td>${item.unit_price ? item.unit_price.toLocaleString() + ' đ' : ''}</td><td><b>${item.amount.toLocaleString()} đ</b></td>`;
+            // Ghi chú
+            html += '<td>';
+            if (!cart.status || cart.status === 'pending') {
+                html += `<input type='text' class='form-control form-control-sm note-input-focus' style='min-width:90px;max-width:180px;display:inline-block' value="${item.note ? item.note.replace(/"/g, '&quot;') : ''}" onfocus="this.classList.add('note-input-focus')" onblur="this.classList.remove('note-input-focus'); updateNote('${cart.order_id}','${item.dish.replace(/'/g, '\&#39;').replace(/"/g, '&quot;')}', this.value)" placeholder='Ghi chú...'>`;
+            } else {
+                html += `<span>${item.note || ''}</span>`;
+            }
+            html += '</td>';
+            // Nút xóa
+            html += '<td>';
+            if (!cart.status || cart.status === 'pending') {
+                html += `<button class='btn btn-sm btn-danger' onclick='removeCartItem("${cart.order_id}", "${item.dish.replace(/"/g, '&quot;')}")'><i class="fas fa-trash"></i></button>`;
+            }
+            html += `</td></tr>`;
+        });
+        html += '</tbody></table>';
+        html += `<div class="p-3 text-end"><b>Tổng cộng: ${cart.total ? cart.total.toLocaleString() : 0} đ</b></div>`;
+        totalAll += cart.total || 0;
+        // Trạng thái và nút xác nhận
+        if (cart.status === 'confirmed') {
+            html += `<div class='alert alert-success m-3 text-center'>Đơn hàng đã được gửi cho nhà hàng. Đang chờ bếp xác nhận!</div>`;
+            html += `<div class='text-center mb-3'><button class='btn btn-success' disabled>Đã gửi nhà hàng</button></div>`;
+        } else if (cart.status === 'in_progress') {
+            html += `<div class='alert alert-info m-3 text-center'>Nhà hàng đã xác nhận món ăn, bạn chờ trong giây lát nhé!</div>`;
+            html += `<div class='text-center mb-3'><button class='btn btn-info' disabled>Đang làm món</button></div>`;
+        } else if (cart.status === 'done') {
+            html += `<div class='alert alert-primary m-3 text-center'>Món ăn đã hoàn thành! Chúc bạn ngon miệng.</div>`;
+            html += `<div class='text-center mb-3'><button class='btn btn-primary' disabled>Đã xong</button></div>`;
+        } else if (cart.status === 'paid' || cart.status === 'Đã thanh toán') {
+            html += `<div class='alert alert-success m-3 text-center'><b>Nhà hàng đã xác nhận chuyển khoản thành công! Cảm ơn bạn.</b></div>`;
+            html += `<div class='text-center mb-3'><button class='btn btn-success' disabled>Đã thanh toán</button></div>`;
+        } else {
+            html += `<div class='text-center mb-3'><button class='btn btn-success' onclick='confirmCart("${cart.order_id}")'>Xác nhận gửi món cho nhà hàng</button></div>`;
+        }
+        html += `</div></div>`;
+    });
+    // Thêm tổng hóa đơn ở cuối
+    html += `<div class="alert alert-info text-end mb-0"><b>💰 Tổng hóa đơn (tất cả): ${totalAll.toLocaleString()} đ</b></div>`;
+    cartBody.innerHTML = html;
+    // Nếu vừa đóng QR vì đã thanh toán, hiện alert
+    if (qrJustPaid) {
+        setTimeout(() => { alert('Nhà hàng đã xác nhận chuyển khoản thành công!'); }, 300);
+    }
+}
+function getStatusColor(status) {
+    if (status === 'confirmed') return 'success';
+    if (status === 'in_progress') return 'info';
+    if (status === 'done') return 'primary';
+    return 'secondary';
+}
+function getStatusText(status) {
+    if (status === 'confirmed') return 'Đã gửi bếp';
+    if (status === 'in_progress') return 'Đang làm';
+    if (status === 'done') return 'Đã xong';
+    return 'Chưa chốt';
+}
+async function removeCartItem(orderId, dishName) {
+    if (!confirm('Bạn chắc chắn muốn xóa món này khỏi hóa đơn?')) return;
+    const res = await fetch('/api/cart/remove_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dish_name: dishName, order_id: orderId })
+    });
+    if (res.ok) {
+        // Reload lại cart
+        const cartRes = await fetch('/api/cart');
+        const cartData = await cartRes.json();
+        renderCart(cartData);
+    } else {
+        alert('Có lỗi khi xóa món!');
+    }
+}
+async function confirmCart(orderId) {
+    if (!confirm('Bạn chắc chắn muốn gửi đơn này cho nhà hàng? Sau khi xác nhận sẽ không thể sửa/xóa món!')) return;
+    const res = await fetch('/api/cart/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId })
+    });
+    if (res.ok) {
+        alert('Đã gửi đơn cho nhà hàng!');
+        // Reload lại cart
+        const cartRes = await fetch('/api/cart');
+        const cartData = await cartRes.json();
+        renderCart(cartData);
+    } else {
+        alert('Có lỗi khi xác nhận đơn!');
+    }
+}
+async function updateNote(orderId, dishName, note) {
+    const res = await fetch('/api/cart/update_note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, dish_name: dishName, note: note })
+    });
+    if (!res.ok) {
+        alert('Có lỗi khi lưu ghi chú!');
+    }
+}
+// Thêm nút vào modal-footer của cartModal
+(function addPayQRButton() {
+    const cartModalFooter = document.querySelector('#cartModal .modal-footer');
+    if (cartModalFooter && !document.getElementById('pay-qr-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-warning';
+        btn.id = 'pay-qr-btn';
+        btn.innerHTML = '<i class="fas fa-qrcode"></i> Thanh toán chuyển khoản';
+        btn.onclick = showQRModal;
+        cartModalFooter.insertBefore(btn, cartModalFooter.firstChild);
+    }
+})();
+
+async function showQRModal() {
+    // Gọi API chatbot để lấy mã QR tổng hóa đơn
+    const qrBody = document.getElementById('qr-modal-body');
+    qrBody.innerHTML = '<div class="text-center text-muted">Đang lấy mã QR...</div>';
+    var modal = new bootstrap.Modal(document.getElementById('qrModal'));
+    modal.show();
+    try {
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: 'chuyển khoản' })
+        });
+        const data = await res.json();
+        // Lấy phần mã QR từ response (có thể là HTML)
+        qrBody.innerHTML = data.response || '<div class="text-danger">Không lấy được mã QR!</div>';
+    } catch (e) {
+        qrBody.innerHTML = '<div class="text-danger">Có lỗi khi lấy mã QR!</div>';
+    }
+}
+</script>
+</body>
+</html> 

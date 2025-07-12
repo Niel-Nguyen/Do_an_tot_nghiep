@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Danh sách hóa đơn</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { background: #f8f9fa; }
+        h2 { margin: 30px 0 20px 0; }
+        .table thead th { background: #007bff; color: #fff; }
+        .table-hover tbody tr:hover { background: #e9ecef; }
+        .status-pending { color: #ffc107; font-weight: bold; }
+        .status-confirmed { color: #17a2b8; font-weight: bold; }
+        .status-in_progress { color: #0d6efd; font-weight: bold; }
+        .status-done { color: #28a745; font-weight: bold; }
+        .status-completed { color: #28a745; font-weight: bold; }
+        .status-sent_to_kitchen { color: #6610f2; font-weight: bold; }
+        .status-paid { color: #20c997; font-weight: bold; }
+        .notify-bell {
+            position: fixed;
+            top: 24px;
+            right: 36px;
+            z-index: 9999;
+            font-size: 2.2rem;
+            color: #007bff;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px #0002;
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .notify-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #dc3545;
+            color: #fff;
+            border-radius: 50%;
+            font-size: 1rem;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 1px 4px #0003;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 class="text-center">Danh sách hóa đơn (Bill) nhà hàng</h2>
+    <!-- Icon chuông thông báo -->
+    <div class="notify-bell" id="notify-bell" title="Có đơn hàng mới!">
+        <i class="fas fa-bell"></i>
+        <span class="notify-badge" id="notify-badge" style="display:none;">1</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Order ID</th>
+                    <th>Thời gian tạo</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
+                    <th>Chi tiết</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for bill in bills %}
+                <tr>
+                    <td>{{ bill['user_id'] }}</td>
+                    <td><span style="font-size:0.95em">{{ bill['order_id'] }}</span></td>
+                    <td>{{ bill['created_at'] }}</td>
+                    <td><b>{{ bill['total'] | default(0) | int | string }} đ</b></td>
+                    <td>
+                        <span class="status-{{ bill.get('status', 'pending').replace(' ', '_') }}">
+                            {{ bill.get('status', 'pending')|capitalize }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin_bill_detail', user_id=bill['user_id'], order_id=bill['order_id']) }}" class="btn btn-sm btn-primary">Xem chi tiết</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<!-- Âm thanh thông báo -->
+<audio id="notify-audio" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124bfae5b6.mp3" preload="auto"></audio>
+<!-- Modal chi tiết bill mới/cập nhật -->
+<div class="modal fade" id="billNotifyModal" tabindex="-1" aria-labelledby="billNotifyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="billNotifyModalLabel">Thông báo đơn hàng mới/cập nhật</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="bill-notify-body">
+        <!-- Nội dung sẽ render bằng JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="bill-notify-refresh">Cập nhật</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let lastBillMap = {};
+let notified = false;
+let changedBills = [];
+function getCurrentBillMap() {
+    const rows = document.querySelectorAll('tbody tr');
+    let map = {};
+    rows.forEach(row => {
+        const orderIdCell = row.querySelector('td:nth-child(2)');
+        const statusCell = row.querySelector('td:nth-child(5)');
+        const createdAtCell = row.querySelector('td:nth-child(3)');
+        const totalCell = row.querySelector('td:nth-child(4)');
+        const detailUrl = row.querySelector('a.btn-primary') ? row.querySelector('a.btn-primary').href : '#';
+        if (orderIdCell && statusCell) {
+            map[orderIdCell.textContent.trim()] = {
+                status: statusCell.textContent.trim(),
+                created_at: createdAtCell ? createdAtCell.textContent.trim() : '',
+                total: totalCell ? totalCell.textContent.trim() : '',
+                detail_url: detailUrl
+            };
+        }
+    });
+    return map;
+}
+function checkNewBills() {
+    fetch(window.location.href, {cache: 'no-store'})
+        .then(res => res.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const rows = doc.querySelectorAll('tbody tr');
+            let newMap = {};
+            rows.forEach(row => {
+                const orderIdCell = row.querySelector('td:nth-child(2)');
+                const statusCell = row.querySelector('td:nth-child(5)');
+                const createdAtCell = row.querySelector('td:nth-child(3)');
+                const totalCell = row.querySelector('td:nth-child(4)');
+                const detailUrl = row.querySelector('a.btn-primary') ? row.querySelector('a.btn-primary').href : '#';
+                if (orderIdCell && statusCell) {
+                    newMap[orderIdCell.textContent.trim()] = {
+                        status: statusCell.textContent.trim(),
+                        created_at: createdAtCell ? createdAtCell.textContent.trim() : '',
+                        total: totalCell ? totalCell.textContent.trim() : '',
+                        detail_url: detailUrl
+                    };
+                }
+            });
+            changedBills = [];
+            // Bill mới hoặc cập nhật (status hoặc total khác)
+            Object.keys(newMap).forEach(id => {
+                if (!lastBillMap[id]) {
+                    changedBills.push({type: 'new', id, ...newMap[id]});
+                } else if (lastBillMap[id].status !== newMap[id].status || lastBillMap[id].total !== newMap[id].total) {
+                    changedBills.push({type: 'status', id, ...newMap[id], old_status: lastBillMap[id].status, old_total: lastBillMap[id].total});
+                }
+            });
+            if (changedBills.length) {
+                document.getElementById('notify-badge').style.display = 'flex';
+                notified = true;
+                // Phát âm thanh
+                const audio = document.getElementById('notify-audio');
+                if (audio) { audio.currentTime = 0; audio.play(); }
+            }
+            lastBillMap = newMap;
+        });
+}
+document.addEventListener('DOMContentLoaded', function() {
+    lastBillMap = getCurrentBillMap();
+    setInterval(checkNewBills, 3000);
+    document.getElementById('notify-bell').onclick = function() {
+        document.getElementById('notify-badge').style.display = 'none';
+        notified = false;
+        // Hiển thị popup chi tiết
+        let html = '';
+        if (changedBills.length) {
+            html = '<ul class="list-group">';
+            changedBills.forEach(bill => {
+                if (bill.type === 'new') {
+                    html += `<li class='list-group-item'><b>Đơn mới:</b> <a href='${bill.detail_url}' target='_blank'>${bill.id}</a> - <span class='badge bg-success'>${bill.status}</span> <span class='text-muted'>(${bill.created_at})</span> <span class='text-primary'>${bill.total}</span></li>`;
+                } else if (bill.type === 'status') {
+                    let totalChange = bill.old_total !== bill.total ? ` <span class='text-warning'>(Tổng tiền: ${bill.old_total} → ${bill.total})</span>` : '';
+                    html += `<li class='list-group-item'><b>Đơn cập nhật:</b> <a href='${bill.detail_url}' target='_blank'>${bill.id}</a> - <span class='badge bg-info'>${bill.old_status} → ${bill.status}</span> <span class='text-muted'>(${bill.created_at})</span>${totalChange}</li>`;
+                }
+            });
+            html += '</ul>';
+        } else {
+            html = '<div class="text-center text-muted">Không có đơn hàng mới hoặc cập nhật.</div>';
+        }
+        document.getElementById('bill-notify-body').innerHTML = html;
+        var modal = new bootstrap.Modal(document.getElementById('billNotifyModal'));
+        modal.show();
+        changedBills = [];
+    };
+    document.getElementById('bill-notify-refresh').onclick = function() {
+        location.reload();
+    };
+});
+</script>
+</body>
+</html> 

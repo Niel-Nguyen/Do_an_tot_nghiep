@@ -1,0 +1,64 @@
+[
+  {
+    "user_id": "Vuong",
+    "order_id": "de765aac-7bae-41e9-b4b9-52a408ffc824",
+    "items": [
+      {
+        "dish": "Phở Cuốn Thịt Bò Rau Thơm",
+        "quantity": 1,
+        "unit_price": 60000,
+        "amount": 60000,
+        "note": ""
+      },
+      {
+        "dish": "Bún Bò Huế Giò Nạm",
+        "quantity": 1,
+        "unit_price": 45000,
+        "amount": 45000,
+        "note": ""
+      },
+      {
+        "dish": "Bún Mắm Heo Quay",
+        "quantity": 1,
+        "unit_price": 45000,
+        "amount": 45000,
+        "note": ""
+      }
+    ],
+    "total": 150000,
+    "created_at": "11/08/2025 17:34:47",
+    "paid_at": "2025-08-11 17:36:17",
+    "table_id": null
+  },
+  {
+    "user_id": "Vuong",
+    "order_id": "c5bd2c8c-ab1b-456e-8490-081f70316d22",
+    "items": [
+      {
+        "dish": "Tàu hủ ky chiên xả ớt",
+        "quantity": 1,
+        "unit_price": 30000,
+        "amount": 30000,
+        "note": ""
+      },
+      {
+        "dish": "Gỏi ngó sen tôm thịt",
+        "quantity": 1,
+        "unit_price": 45000,
+        "amount": 45000,
+        "note": ""
+      },
+      {
+        "dish": "Bánh tráng cuốn xốt Mayo",
+        "quantity": 1,
+        "unit_price": 45000,
+        "amount": 45000,
+        "note": ""
+      }
+    ],
+    "total": 120000,
+    "created_at": "11/08/2025 17:55:16",
+    "paid_at": "2025-08-11 17:56:10",
+    "table_id": null
+  }
+]

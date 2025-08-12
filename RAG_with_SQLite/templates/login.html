@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Face Login</title>
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        video, canvas { border: 1px solid #ccc; margin: 10px 0; }
+        #status { margin: 10px 0; color: #007bff; }
+    </style>
+</head>
+<body>
+    <h2>Face Login</h2>
+    <video id="video" width="320" height="240" autoplay></video>
+    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+    <div id="status">Please look at the camera...</div>
+    <div id="register-form" style="display:none;">
+        <input type="text" id="name-input" placeholder="Enter your name" />
+        <button id="register-btn">Register</button>
+    </div>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const statusDiv = document.getElementById('status');
+        const registerForm = document.getElementById('register-form');
+        const nameInput = document.getElementById('name-input');
+        const registerBtn = document.getElementById('register-btn');
+        let capturedImage = null;
+
+        // Mở camera và hiển thị lên thẻ video
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => { statusDiv.innerText = "Cannot access camera!"; });
+
+        // Tự động chụp ảnh sau 3 giây
+        setTimeout(() => {
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            capturedImage = canvas.toDataURL('image/jpeg');
+            statusDiv.innerText = "Detecting...";
+            // Gửi ảnh về backend nhận diện
+            fetch('/face-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: capturedImage })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") {
+                    statusDiv.innerText = "Welcome, " + data.name + "!";
+                    setTimeout(() => { window.location.href = "/"; }, 1500);
+                } else if (data.status === "new_user") {
+                    statusDiv.innerText = "Face not recognized. Please register.";
+                    registerForm.style.display = "block";
+                } else {
+                    statusDiv.innerText = "Recognition failed.";
+                }
+            })
+            .catch(() => { statusDiv.innerText = "Server error!"; });
+        }, 3000);
+
+        registerBtn.onclick = function() {
+            const name = nameInput.value.trim();
+            if (!name) {
+                statusDiv.innerText = "Please enter your name.";
+                return;
+            }
+            statusDiv.innerText = "Registering...";
+            fetch('/face-register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, image: capturedImage })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "registered") {
+                    statusDiv.innerText = "Registered! Welcome, " + data.name + "!";
+                    setTimeout(() => { window.location.href = "/"; }, 1500);
+                } else {
+                    statusDiv.innerText = "Registration failed.";
+                }
+            })
+            .catch(() => { statusDiv.innerText = "Server error!"; });
+        };
+    </script>
+</body>
+</html>

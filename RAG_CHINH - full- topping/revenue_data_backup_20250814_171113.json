@@ -1,0 +1,244 @@
+{
+  "2025-08-14": {
+    "total_revenue": 940000.0,
+    "orders_count": 9,
+    "orders": [
+      {
+        "order_id": "",
+        "table_id": "2412d0ec-68d5-454b-938d-5fcaf6f1a5f9",
+        "user_id": "2412d0ec-68d5-454b-938d-5fcaf6f1a5f9",
+        "total_amount": 0.0,
+        "items": [
+          {
+            "name": "",
+            "price": 0.0,
+            "quantity": 1,
+            "total": 0.0
+          },
+          {
+            "name": "",
+            "price": 0.0,
+            "quantity": 1,
+            "total": 0.0
+          },
+          {
+            "name": "",
+            "price": 0.0,
+            "quantity": 1,
+            "total": 0.0
+          }
+        ],
+        "payment_time": "2025-08-14T16:15:13.829060",
+        "status": "paid"
+      },
+      {
+        "order_id": "",
+        "table_id": "b3e154eb-a766-42c6-bb3f-3750748ae735",
+        "user_id": "b3e154eb-a766-42c6-bb3f-3750748ae735",
+        "total": 170000.0,
+        "total_amount": 170000.0,
+        "items": [
+          {
+            "name": "",
+            "price": 0.0,
+            "quantity": 1,
+            "total": 0.0
+          },
+          {
+            "name": "",
+            "price": 0.0,
+            "quantity": 1,
+            "total": 0.0
+          },
+          {
+            "name": "",
+            "price": 0.0,
+            "quantity": 2,
+            "total": 0.0
+          }
+        ],
+        "payment_time": "2025-08-14T16:19:44.376889",
+        "status": "paid"
+      },
+      {
+        "order_id": "",
+        "table_id": "b3e154eb-a766-42c6-bb3f-3750748ae735",
+        "user_id": "b3e154eb-a766-42c6-bb3f-3750748ae735",
+        "total": 60000.0,
+        "total_amount": 60000.0,
+        "items": [
+          {
+            "name": "",
+            "price": 0.0,
+            "quantity": 1,
+            "total": 0.0
+          }
+        ],
+        "payment_time": "2025-08-14T16:21:38.296583",
+        "status": "paid"
+      },
+      {
+        "order_id": "",
+        "table_id": "b3e154eb-a766-42c6-bb3f-3750748ae735",
+        "user_id": "ad3ac8c8-3ac9-4418-9220-e984a90a9938",
+        "total": 75000.0,
+        "total_amount": 75000.0,
+        "items": [
+          {
+            "name": "",
+            "price": 0.0,
+            "quantity": 1,
+            "total": 0.0
+          },
+          {
+            "name": "",
+            "price": 0.0,
+            "quantity": 1,
+            "total": 0.0
+          }
+        ],
+        "payment_time": "2025-08-14T16:23:16.392014",
+        "status": "paid"
+      },
+      {
+        "order_id": "",
+        "table_id": "94ff7341-d6ad-42ee-98f5-efe2f06e8fbb",
+        "user_id": "94ff7341-d6ad-42ee-98f5-efe2f06e8fbb",
+        "total": 125000.0,
+        "total_amount": 125000.0,
+        "items": [
+          {
+            "name": "Chả giò ngũ vị",
+            "price": 60000.0,
+            "quantity": 1,
+            "total": 60000.0
+          },
+          {
+            "name": "Canh ba màu",
+            "price": 35000.0,
+            "quantity": 1,
+            "total": 35000.0
+          },
+          {
+            "name": "Tàu hủ ky chiên xả ớt",
+            "price": 30000.0,
+            "quantity": 1,
+            "total": 30000.0
+          }
+        ],
+        "payment_time": "2025-08-14T16:39:13.236185",
+        "status": "paid"
+      },
+      {
+        "order_id": "",
+        "table_id": "2876dd7c-7dc5-4be1-b9cd-1530f4ed5c4a",
+        "user_id": "2876dd7c-7dc5-4be1-b9cd-1530f4ed5c4a",
+        "total": 175000.0,
+        "total_amount": 175000.0,
+        "items": [
+          {
+            "name": "Canh ba màu",
+            "price": 35000.0,
+            "quantity": 1,
+            "total": 35000.0
+          },
+          {
+            "name": "Tàu hủ ky chiên xả ớt",
+            "price": 30000.0,
+            "quantity": 1,
+            "total": 30000.0
+          },
+          {
+            "name": "Chả giò ngũ vị",
+            "price": 60000.0,
+            "quantity": 1,
+            "total": 60000.0
+          },
+          {
+            "name": "Mực ống hấp củ đậu",
+            "price": 50000.0,
+            "quantity": 1,
+            "total": 50000.0
+          }
+        ],
+        "payment_time": "2025-08-14T16:47:02.447915",
+        "status": "paid"
+      },
+      {
+        "order_id": "",
+        "table_id": "1a0718b6-3683-4164-baf9-48032878e8bc",
+        "user_id": "1a0718b6-3683-4164-baf9-48032878e8bc",
+        "total": 95000.0,
+        "total_amount": 95000.0,
+        "items": [
+          {
+            "name": "Canh ba màu",
+            "price": 35000.0,
+            "quantity": 1,
+            "total": 35000.0
+          },
+          {
+            "name": "Chả giò ngũ vị",
+            "price": 60000.0,
+            "quantity": 1,
+            "total": 60000.0
+          }
+        ],
+        "payment_time": "2025-08-14T16:50:11.342671",
+        "status": "paid"
+      },
+      {
+        "order_id": "",
+        "table_id": "ce294822-b76d-49ff-aef7-2ca5d7d2e661",
+        "user_id": "ce294822-b76d-49ff-aef7-2ca5d7d2e661",
+        "total": 145000.0,
+        "total_amount": 145000.0,
+        "items": [
+          {
+            "name": "Canh ba màu",
+            "price": 35000.0,
+            "quantity": 1,
+            "total": 35000.0
+          },
+          {
+            "name": "Mực ống hấp củ đậu",
+            "price": 50000.0,
+            "quantity": 1,
+            "total": 50000.0
+          },
+          {
+            "name": "Chả giò ngũ vị",
+            "price": 60000.0,
+            "quantity": 1,
+            "total": 60000.0
+          }
+        ],
+        "payment_time": "2025-08-14T16:56:06.807117",
+        "status": "paid"
+      },
+      {
+        "order_id": "",
+        "table_id": "ce294822-b76d-49ff-aef7-2ca5d7d2e661",
+        "user_id": "ce294822-b76d-49ff-aef7-2ca5d7d2e661",
+        "total": 95000.0,
+        "total_amount": 95000.0,
+        "items": [
+          {
+            "name": "Chả giò ngũ vị",
+            "price": 60000.0,
+            "quantity": 1,
+            "total": 60000.0
+          },
+          {
+            "name": "Canh ba màu",
+            "price": 35000.0,
+            "quantity": 1,
+            "total": 35000.0
+          }
+        ],
+        "payment_time": "2025-08-14T17:05:03.101396",
+        "status": "paid"
+      }
+    ]
+  }
+}

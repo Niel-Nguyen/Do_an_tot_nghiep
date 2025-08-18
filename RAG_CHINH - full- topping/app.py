@@ -49,6 +49,36 @@ from functools import wraps
 import sqlite3
 from face_login.core1 import recognize_user, register_user
 
+def reset_face_login_database():
+    """Reset face login sessions (keep face data intact)"""
+    try:
+        from face_login.utils import reset_face_database
+        return reset_face_database()
+    except Exception as e:
+        print(f"✗ Error resetting face login sessions: {e}")
+        return False
+
+def hard_reset_face_database():
+    """Complete reset - delete all face data (admin only)"""
+    try:
+        from face_login.utils import hard_reset_face_database
+        return hard_reset_face_database()
+    except Exception as e:
+        print(f"✗ Error hard resetting face database: {e}")
+        return False
+
+def init_face_login_for_session():
+    """Initialize face login for a new table session"""
+    try:
+        # Reset the face database to start fresh
+        if reset_face_login_database():
+            print("✓ Face login initialized for new session")
+            return True
+        return False
+    except Exception as e:
+        print(f"✗ Error initializing face login: {e}")
+        return False
+
 # Initialize table_manager with database support
 from core.table_manager import TableManager
 table_manager = TableManager(db_manager)
@@ -114,7 +144,7 @@ def build_table_redirect(table_token: str = None, table_id: str = None) -> str:
     and return a url with the session token. Otherwise fallback to mobile_menu."""
     # Prefer explicit token
     if table_token:
-        return url_for('menu', table_token=table_token)
+        return url_for('mobile_menu', table_token=table_token)
 
     # If table_id given, try to get an active session and its token
     if table_id:
@@ -122,15 +152,18 @@ def build_table_redirect(table_token: str = None, table_id: str = None) -> str:
             session_obj = table_manager.get_active_session(table_id)
             if not session_obj:
                 # Start a session so we can produce a token for redirect
+                # Also reset face login for the new session
+                print(f"Starting new session for table {table_id} via build_table_redirect")
+                init_face_login_for_session()
                 session_obj = table_manager.start_table_session(table_id, customer_count=0)
-                if session_obj and getattr(session_obj, 'session_token', None):
-                    return url_for('menu', table_token=session_obj.session_token)
+            if session_obj and getattr(session_obj, 'session_token', None):
+                return url_for('mobile_menu', table_token=session_obj.session_token)
         except Exception:
             pass
-    # fallback to table_id param
-    return url_for('menu', table_id=table_id)
+        # fallback to table_id param
+        return url_for('mobile_menu', table_id=table_id)
 
-    return url_for('menu')
+    return url_for('mobile_menu')
 
 # --- Quản lý trạng thái món ăn (bật/tắt) ---
 # Lưu trạng thái món vào biến toàn cục (có thể thay bằng DB nếu cần)
@@ -157,7 +190,17 @@ def mobile_menu():
 
     # Accept either 'user_id' (table token style) or 'user_name' (face-login name)
     user_id = session.get('user_id') or session.get('user_name')
-    if not user_id:
+    
+    # Check if we have a table context (token or id)
+    current_table_context = table_token or table_id
+    session_table_context = session.get('table_context')
+    
+    # If no user or different table context, force face login
+    if not user_id or (current_table_context and current_table_context != session_table_context):
+        if current_table_context != session_table_context:
+            print(f"Table context changed: {session_table_context} -> {current_table_context}, clearing session")
+            session.clear()  # Clear session when table context changes
+        
         # Redirect to face-login and keep table context so login page can return to the correct menu
         if table_token:
             return redirect(url_for('face_login_route', table_token=table_token))
@@ -879,6 +922,10 @@ def api_start_table_session(table_id):
     data = request.get_json()
     customer_count = data.get('customer_count', 0)
     
+    # Reset face login database for new session
+    print(f"Starting new session for table {table_id} - resetting face login database")
+    face_reset_success = init_face_login_for_session()
+    
     session = table_manager.start_table_session(table_id, customer_count)
     if session:
         # Trigger realtime update
@@ -886,7 +933,8 @@ def api_start_table_session(table_id):
             'table_id': table_id,
             'table_name': session.table_name,
             'customer_count': customer_count,
-            'message': f'Bắt đầu phiên cho {session.table_name}'
+            'face_login_reset': face_reset_success,
+            'message': f'Bắt đầu phiên cho {session.table_name}' + (' (Face login reset)' if face_reset_success else ' (Face login reset failed)')
         })
         return jsonify({
             'success': True,
@@ -897,7 +945,8 @@ def api_start_table_session(table_id):
                 'customer_count': session.customer_count,
                 'token': session.session_token  # Thêm token vào response
             },
-            'token': session.session_token  # Thêm token ở level cao cho dễ access
+            'token': session.session_token,  # Thêm token ở level cao cho dễ access
+            'face_login_reset': face_reset_success
         })
     else:
         return jsonify({'success': False, 'error': 'Không thể bắt đầu phiên làm việc'}), 400
@@ -907,6 +956,16 @@ def api_end_table_session(table_id):
     """API kết thúc phiên làm việc cho bàn"""
     success = table_manager.end_table_session(table_id)
     if success:
+        # End face sessions for this table (keep face data intact)
+        from face_login.utils import end_face_session
+        face_session_ended = end_face_session(table_id=table_id)
+        print(f"Ending session for table {table_id} - face session ended: {face_session_ended}")
+        
+        # Clear Flask session to force face login for next session
+        if 'user_id' in session:
+            print(f"Clearing session for user: {session.get('user_id')}")
+        session.clear()
+        
         # Cập nhật database để đánh dấu bàn đã đóng
         try:
             with sqlite3.connect('restaurant.db') as conn:
@@ -922,9 +981,15 @@ def api_end_table_session(table_id):
         
         trigger_realtime_update('table_session_ended', {
             'table_id': table_id,
+            'face_session_ended': face_session_ended,
+            'session_cleared': True,
             'timestamp': time.time()
         })
-        return jsonify({'success': True})
+        return jsonify({
+            'success': True,
+            'face_session_ended': face_session_ended,
+            'session_cleared': True
+        })
     else:
         return jsonify({'success': False, 'error': 'Không tìm thấy phiên làm việc'}), 404
 
@@ -1530,15 +1595,30 @@ def api_face_login():
     image_b64 = data.get('image_b64')
     if not image_b64:
         return jsonify({'success': False, 'error': 'Thiếu dữ liệu ảnh'}), 400
-    user_id = recognize_user(image_b64)
+    
+    # Get table context
+    table_token = data.get('table_token') or None
+    table_id = data.get('table_id') or None
+    
+    # Use new recognition function with session tracking
+    user_id = recognize_user(image_b64, table_id=table_id, session_token=table_token)
     if user_id:
         # Set session so mobile_menu recognizes the logged-in user
         try:
             session['user_name'] = user_id
             session['user_id'] = user_id
+            # Store table context in session
+            session['table_context'] = {
+                'table_token': table_token,
+                'table_id': table_id
+            }
         except Exception:
             pass
-        return jsonify({'success': True, 'user_id': user_id})
+        
+        # Prepare redirect URL to preserve table context
+        redirect_url = build_table_redirect(table_token=table_token, table_id=table_id)
+        
+        return jsonify({'success': True, 'user_id': user_id, 'redirect': redirect_url})
     else:
         # Trả về trạng thái new_user để client hiển thị form đăng ký
         return jsonify({'success': False, 'status': 'new_user', 'error': 'Không nhận diện được khuôn mặt'}), 200
@@ -1557,11 +1637,13 @@ def api_face_register():
     try:
         session['user_name'] = name
         session['user_id'] = name
+        # Store table context in session
+        table_token = data.get('table_token') or None
+        table_id = data.get('table_id') or None
+        session['table_context'] = table_token or table_id
     except Exception:
         pass
     # Prepare redirect URL to menu (preserve table_token/table_id if provided)
-    table_token = data.get('table_token') or None
-    table_id = data.get('table_id') or None
     redirect_url = build_table_redirect(table_token=table_token, table_id=table_id)
 
     return jsonify({'success': True, 'user_id': name, 'status': 'registered', 'redirect': redirect_url})
@@ -1578,6 +1660,7 @@ def face_register_route():
     # Build redirect URL (preserve table_token/table_id if included)
     table_token = data.get('table_token') or None
     table_id = data.get('table_id') or None
+    session['table_context'] = table_token or table_id  # Store table context
     redirect_url = build_table_redirect(table_token=table_token, table_id=table_id)
 
     # If this was an AJAX/JSON request, return JSON with redirect field so client can navigate.
@@ -1612,6 +1695,13 @@ def face_login_route():
     session['user_name'] = user
     session['user_id'] = user
 
+    # Preserve table context from JSON, query or form so we can redirect back properly
+    table_token = data.get('table_token') or request.args.get('table_token') or request.form.get('table_token')
+    table_id = data.get('table_id') or request.args.get('table_id') or request.form.get('table_id')
+    
+    # Store table context in session
+    session['table_context'] = table_token or table_id
+
     used_dishes = db_get_used_dishes_history(user)
     dish_names = list(used_dishes.keys()) if used_dishes else []
     if dish_names:
@@ -1619,10 +1709,6 @@ def face_login_route():
         chatbot_greeting = f"Chào mừng {user} quay lại! Bạn có muốn gọi lại các món đã từng dùng: {dish_list} không?"
     else:
         chatbot_greeting = f"Chào mừng {user} quay lại!"
-
-    # Preserve table context from JSON, query or form so we can redirect back properly
-    table_token = data.get('table_token') or request.args.get('table_token') or request.form.get('table_token')
-    table_id = data.get('table_id') or request.args.get('table_id') or request.form.get('table_id')
 
     redirect_url = build_table_redirect(table_token=table_token, table_id=table_id)
 
@@ -1636,6 +1722,136 @@ def face_login_route():
         })
 
     return redirect(redirect_url)
+    
+    # Store table context in session
+    session['table_context'] = table_token or table_id
+
+    used_dishes = db_get_used_dishes_history(user)
+    dish_names = list(used_dishes.keys()) if used_dishes else []
+    if dish_names:
+        dish_list = ', '.join(dish_names)
+        chatbot_greeting = f"Chào mừng {user} quay lại! Bạn có muốn gọi lại các món đã từng dùng: {dish_list} không?"
+    else:
+        chatbot_greeting = f"Chào mừng {user} quay lại!"
+
+    redirect_url = build_table_redirect(table_token=table_token, table_id=table_id)
+
+    if request.is_json:
+        return jsonify({
+            "status": "success",
+            "name": user,
+            "chatbot_greeting": chatbot_greeting,
+            "used_dishes": dish_names,
+            "redirect": redirect_url
+        })
+
+    return redirect(redirect_url)
+
+@app.route('/camera-test')
+def camera_test_route():
+    """Test page for debugging camera issues"""
+    return render_template('camera_test.html')
+
+# --- Face Login Management APIs ---
+@app.route('/api/admin/face_login/reset', methods=['POST'])
+@login_required
+def api_reset_face_login():
+    """API để admin reset face login sessions (giữ lại face data)"""
+    try:
+        success = reset_face_login_database()
+        if success:
+            return jsonify({
+                'success': True, 
+                'message': 'Face login sessions đã được reset (face data được giữ lại)'
+            })
+        else:
+            return jsonify({
+                'success': False, 
+                'error': 'Không thể reset face login sessions'
+            }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False, 
+            'error': f'Lỗi khi reset face login: {str(e)}'
+        }), 500
+
+@app.route('/api/admin/face_login/status', methods=['GET'])
+@login_required  
+def api_face_login_status():
+    """API để kiểm tra trạng thái face login database"""
+    try:
+        from face_login.utils import get_face_database_info
+        info = get_face_database_info()
+        
+        return jsonify({
+            'database_exists': info['exists'],
+            'database_path': info['path'],
+            'registered_users': info['count'],
+            'user_names': info['names'],
+            'recent_logins': info.get('recent_logins', 0),
+            'active_sessions': info.get('active_sessions', 0),
+            'top_user': info.get('top_user', 'None'),
+            'error': info.get('error')
+        })
+    except Exception as e:
+        return jsonify({
+            'database_exists': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/admin/face_login/hard_reset', methods=['POST'])
+@login_required
+def api_hard_reset_face_login():
+    """API để admin xóa hoàn toàn tất cả dữ liệu face"""
+    try:
+        success = hard_reset_face_database()
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Tất cả dữ liệu face đã được xóa hoàn toàn'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Không thể xóa dữ liệu face'
+            }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# API endpoint để reset face login database với session clear (admin only)
+@app.route('/api/admin/reset_face_login_with_session', methods=['POST'])
+@login_required
+def api_reset_face_login_with_session():
+    """API để admin reset face login database và clear session"""
+    try:
+        success = reset_face_login_database()
+        session.clear()  # Also clear current session
+        return jsonify({
+            'success': success,
+            'message': 'Face login database reset successfully' if success else 'Failed to reset face login database',
+            'session_cleared': True
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'Error occurred while resetting face login database'
+        }), 500
+
+# Test endpoint để check session status
+@app.route('/api/test/session_status')
+def api_test_session_status():
+    """Test endpoint to check current session status"""
+    return jsonify({
+        'user_id': session.get('user_id'),
+        'user_name': session.get('user_name'),
+        'table_context': session.get('table_context'),
+        'session_keys': list(session.keys()),
+        'has_user': bool(session.get('user_id') or session.get('user_name'))
+    })
 
 if __name__ == '__main__':
     import os

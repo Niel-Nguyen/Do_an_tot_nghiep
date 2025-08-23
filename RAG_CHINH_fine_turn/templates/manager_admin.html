@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Nhà Hàng - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container { padding-top: 30px; }
+        .dashboard-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        .dashboard-header h1 {
+            font-size: 3rem;
+            font-weight: bold;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+        .dashboard-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        .management-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        .management-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .management-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+        }
+        .management-card .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .management-card h3 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        .management-card p {
+            color: #7f8c8d;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        .management-card .btn {
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+        .btn-tables {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border: none;
+            color: white;
+        }
+        .btn-tables:hover {
+            background: linear-gradient(135deg, #2980b9, #1f4e79);
+            transform: scale(1.05);
+            color: white;
+        }
+        .btn-bills {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border: none;
+            color: white;
+        }
+        .btn-bills:hover {
+            background: linear-gradient(135deg, #c0392b, #a93226);
+            transform: scale(1.05);
+            color: white;
+        }
+        .btn-menu {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            border: none;
+            color: white;
+        }
+        .btn-menu:hover {
+            background: linear-gradient(135deg, #e67e22, #d35400);
+            transform: scale(1.05);
+            color: white;
+        }
+        .btn-revenue {
+            background: linear-gradient(135deg, #17a2b8, #6f42c1);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+        .btn-revenue:hover {
+            background: linear-gradient(135deg, #138496, #5a2d82);
+            transform: scale(1.05);
+            color: white;
+        }
+        .stats-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .stats-section h4 {
+            color: white;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .stat-item {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .footer-info {
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            margin-top: 40px;
+        }
+        @media (max-width: 768px) {
+            .dashboard-header h1 {
+                font-size: 2rem;
+            }
+            .management-cards {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div></div>
+                <div class="user-info text-end">
+                    <small class="text-white-50">Đăng nhập với tài khoản:</small>
+                    <div class="text-white fw-bold">
+                        <i class="fas fa-user-shield me-2"></i>{{ username or 'Admin' }}
+                    </div>
+                    <a href="/admin/logout" class="btn btn-outline-light btn-sm mt-2">
+                        <i class="fas fa-sign-out-alt me-1"></i>Đăng Xuất
+                    </a>
+                </div>
+            </div>
+            <h1><i class="fas fa-utensils me-3"></i>Quản Lý Nhà Hàng</h1>
+            <p>Hệ thống quản lý toàn diện cho nhà hàng của bạn</p>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="stats-section">
+            <h4><i class="fas fa-chart-bar me-2"></i>Thống Kê Tổng Quan</h4>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalTables">-</div>
+                    <div class="stat-label">Tổng Số Bàn</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="activeTables">-</div>
+                    <div class="stat-label">Bàn Đang Hoạt Động</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="totalBills">-</div>
+                    <div class="stat-label">Tổng Hóa Đơn</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="pendingBills">-</div>
+                    <div class="stat-label">Hóa Đơn Chờ Xử Lý</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Management Cards -->
+        <div class="management-cards">
+            <!-- Quản lý bàn -->
+            <div class="management-card">
+                <div class="icon">
+                    <i class="fas fa-table"></i>
+                </div>
+                <h3>Quản Lý Bàn</h3>
+                <p>Quản lý danh sách bàn, trạng thái bàn, tạo QR code và quản lý phiên làm việc của từng bàn</p>
+                <a href="/admin/tables" class="btn btn-tables">
+                    <i class="fas fa-table me-2"></i>Quản Lý Bàn
+                </a>
+            </div>
+
+            <!-- Quản lý hóa đơn -->
+            <div class="management-card">
+                <div class="icon">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <h3>Quản Lý Hóa Đơn</h3>
+                <p>Xem và quản lý tất cả hóa đơn, cập nhật trạng thái đơn hàng, theo dõi thanh toán</p>
+                <a href="/admin/bills" class="btn btn-bills">
+                    <i class="fas fa-receipt me-2"></i>Quản Lý Hóa Đơn
+                </a>
+            </div>
+
+            <!-- Quản lý menu -->
+            <div class="management-card">
+                <div class="icon">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <h3>Quản Lý Menu</h3>
+                <p>Quản lý món ăn, cập nhật trạng thái món (có sẵn/hết), điều chỉnh menu theo thời gian</p>
+                <a href="/admin/status" class="btn btn-menu">
+                    <i class="fas fa-utensils me-2"></i>Quản Lý Menu
+                </a>
+            </div>
+
+            <!-- Thống kê doanh thu -->
+            <div class="management-card">
+                <div class="icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>Thống Kê Doanh Thu</h3>
+                <p>Xem báo cáo doanh thu chi tiết, phân tích theo ngày/tháng, theo dõi hiệu quả kinh doanh</p>
+                <a href="/admin/revenue" class="btn btn-revenue">
+                    <i class="fas fa-chart-line me-2"></i>Xem Doanh Thu
+                </a>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="stats-section">
+            <h4><i class="fas fa-bolt me-2"></i>Thao Tác Nhanh</h4>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <a href="/mobile_menu" class="btn btn-outline-light w-100 p-3">
+                        <i class="fas fa-mobile-alt d-block mb-2" style="font-size: 1.5rem;"></i>
+                        Menu Mobile
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <a href="/qr-scanner" class="btn btn-outline-light w-100 p-3">
+                        <i class="fas fa-qrcode d-block mb-2" style="font-size: 1.5rem;"></i>
+                        Quét QR Code
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <a href="/chatbot-popup" class="btn btn-outline-light w-100 p-3">
+                        <i class="fas fa-robot d-block mb-2" style="font-size: 1.5rem;"></i>
+                        Chatbot
+                    </a>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <button class="btn btn-outline-light w-100 p-3" onclick="refreshData()">
+                        <i class="fas fa-sync-alt d-block mb-2" style="font-size: 1.5rem;"></i>
+                        Làm Mới Dữ Liệu
+                    </button>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <button class="btn btn-warning w-100 p-3" onclick="toggleRealtime()">
+                        <i class="fas fa-pause d-block mb-2" style="font-size: 1.5rem;"></i>
+                        Tạm Dừng Realtime
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-info">
+            <p><i class="fas fa-heart me-1"></i>Hệ thống quản lý nhà hàng thông minh</p>
+            <p>Cập nhật lần cuối: <span id="lastUpdate">-</span></p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Realtime functionality variables
+        let lastUpdate = 0;
+        let realtimeInterval;
+        let isRealtimeActive = true;
+        const REALTIME_INTERVAL = 2000; // Check every 2 seconds
+
+        // Load dashboard data function
+        async function loadDashboardData() {
+            try {
+                console.log('Loading dashboard data...');
+                
+                // Load tables data
+                const tablesResponse = await fetch('/api/tables/summary');
+                const tablesData = await tablesResponse.json();
+                console.log('Tables data:', tablesData);
+                
+                document.getElementById('totalTables').textContent = tablesData.total_tables || 0;
+                document.getElementById('activeTables').textContent = tablesData.occupied || 0;
+                document.getElementById('totalBills').textContent = tablesData.total_bills || 0;
+                
+                // Load bills status for pending count
+                const billsResponse = await fetch('/api/admin/bills_status');
+                const billsData = await billsResponse.json();
+                console.log('Bills data:', billsData);
+                
+                let pendingCount = 0;
+                if (billsData.bills_by_status) {
+                    pendingCount = (billsData.bills_by_status.pending || 0) + 
+                                  (billsData.bills_by_status.confirmed || 0);
+                }
+                
+                document.getElementById('pendingBills').textContent = pendingCount;
+                
+                // Update last update time
+                updateLastUpdate();
+                
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                // Set default values on error
+                document.getElementById('totalTables').textContent = '?';
+                document.getElementById('activeTables').textContent = '?';
+                document.getElementById('totalBills').textContent = '?';
+                document.getElementById('pendingBills').textContent = '?';
+            }
+        }
+
+        // Realtime data check function
+        async function checkRealtimeUpdates() {
+            if (!isRealtimeActive) return;
+            
+            try {
+                const response = await fetch(`/api/realtime/status?last_update=${lastUpdate}`);
+                const data = await response.json();
+                
+                if (data.has_changes) {
+                    console.log('Realtime changes detected:', data.events);
+                    
+                    // Update with new data from the API response
+                    if (data.current_stats) {
+                        document.getElementById('totalTables').textContent = data.current_stats.total_tables || 0;
+                        document.getElementById('activeTables').textContent = data.current_stats.occupied || 0;
+                        document.getElementById('totalBills').textContent = data.current_stats.total_bills || 0;
+                        document.getElementById('pendingBills').textContent = data.current_stats.pending_bills || 0;
+                    }
+                    
+                    // Show notification for changes
+                    const eventTypes = data.events.map(e => e.type).join(', ');
+                    showNotification(`Dữ liệu đã được cập nhật: ${eventTypes}`, 'info');
+                    
+                    // Add visual indicator for updated elements
+                    highlightUpdatedStats();
+                    
+                    // Update last update time
+                    updateLastUpdate();
+                }
+                
+                // Update our last update timestamp
+                lastUpdate = data.last_change;
+                
+            } catch (error) {
+                console.error('Error checking realtime updates:', error);
+            }
+        }
+
+        // Highlight updated statistics with animation
+        function highlightUpdatedStats() {
+            const statElements = document.querySelectorAll('.stat-number');
+            statElements.forEach(element => {
+                element.style.animation = 'none';
+                setTimeout(() => {
+                    element.style.animation = 'pulse 0.6s ease-in-out';
+                }, 10);
+            });
+        }
+
+        // Update last update time
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleString('vi-VN');
+        }
+
+        // Refresh all data manually
+        function refreshData() {
+            loadDashboardData();
+            showNotification('Đã làm mới dữ liệu!', 'success');
+        }
+
+        // Toggle realtime functionality
+        function toggleRealtime() {
+            isRealtimeActive = !isRealtimeActive;
+            const button = document.querySelector('[onclick="toggleRealtime()"]');
+            
+            if (isRealtimeActive) {
+                button.innerHTML = '<i class="fas fa-pause d-block mb-2" style="font-size: 1.5rem;"></i>Tạm Dừng Realtime';
+                button.className = 'btn btn-warning w-100 p-3';
+                startRealtimePolling();
+                showNotification('Đã bật chế độ realtime', 'success');
+            } else {
+                button.innerHTML = '<i class="fas fa-play d-block mb-2" style="font-size: 1.5rem;"></i>Bật Realtime';
+                button.className = 'btn btn-success w-100 p-3';
+                stopRealtimePolling();
+                showNotification('Đã tắt chế độ realtime', 'warning');
+            }
+        }
+
+        // Start realtime polling
+        function startRealtimePolling() {
+            if (realtimeInterval) {
+                clearInterval(realtimeInterval);
+            }
+            realtimeInterval = setInterval(checkRealtimeUpdates, REALTIME_INTERVAL);
+        }
+
+        // Stop realtime polling
+        function stopRealtimePolling() {
+            if (realtimeInterval) {
+                clearInterval(realtimeInterval);
+                realtimeInterval = null;
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            // Remove existing notifications
+            const existingAlerts = document.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+            
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+        }
+
+        // Add CSS animation for pulse effect
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.1); color: #e74c3c; }
+                100% { transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add hover effects for management cards
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.management-card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-10px) scale(1.02)';
+                });
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+
+            // Initialize dashboard
+            loadDashboardData();
+            
+            // Start realtime polling
+            startRealtimePolling();
+            
+            // Set initial timestamp
+            lastUpdate = Date.now() / 1000;
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            stopRealtimePolling();
+        });
+    </script>
+</body>
+</html>

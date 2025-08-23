@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Face Login</title>
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        video, canvas { border: 1px solid #ccc; margin: 10px 0; }
+        video { display: block !important; } /* Force video to show */
+        #status { margin: 10px 0; color: #007bff; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h2>Face Login</h2>
+    <p><small>🔧 Having camera issues? <a href="/camera-test" target="_blank">Test Camera Here</a></small></p>
+    <video id="video" width="320" height="240" autoplay playsinline></video>
+    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+    <button id="capture-btn" style="display:none; margin: 10px;">Capture Photo</button>
+    <button id="debug-btn" style="margin: 10px; background: orange;">Debug Video</button>
+    <div id="status">Please look at the camera...</div>
+    <div id="backup-upload" style="display:none; margin: 20px 0;">
+        <p><strong>Alternative: Upload a photo</strong></p>
+        <input type="file" id="file-input" accept="image/*" />
+        <button id="upload-btn">Use This Photo</button>
+    </div>
+    <div id="register-form" style="display:none;">
+        <input type="text" id="name-input" placeholder="Enter your name" />
+        <button id="register-btn">Register</button>
+    </div>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const statusDiv = document.getElementById('status');
+        const registerForm = document.getElementById('register-form');
+        const nameInput = document.getElementById('name-input');
+        const registerBtn = document.getElementById('register-btn');
+        const backupUpload = document.getElementById('backup-upload');
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const captureBtn = document.getElementById('capture-btn');
+        const debugBtn = document.getElementById('debug-btn');
+        let capturedImage = null;
+
+        // Check if browser supports camera access
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            statusDiv.innerText = "Your browser doesn't support camera access. Please use Chrome, Firefox, or Edge.";
+            statusDiv.style.color = 'red';
+            console.error('Browser does not support getUserMedia');
+            return;
+        }
+
+        // Check if running on HTTPS (required for camera access on modern browsers)
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            statusDiv.innerHTML = `
+                <p style="color: red;">Camera access requires HTTPS!</p>
+                <p>Please access this page using: <strong>https://${location.hostname}:${location.port || '5000'}</strong></p>
+                <button onclick="location.href='https://${location.hostname}:${location.port || '5000'}${location.pathname}${location.search}'">Switch to HTTPS</button>
+            `;
+            return;
+        }
+
+        console.log('Starting camera access for face login...');
+        statusDiv.innerText = "Initializing camera...";
+
+        // Mở camera và hiển thị lên thẻ video
+        console.log('Attempting to access camera...');
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => { 
+                console.log('Camera access successful, stream:', stream);
+                console.log('Setting video srcObject...');
+                video.srcObject = stream; 
+                statusDiv.innerText = "Camera ready. Please look at the camera...";
+                statusDiv.className = 'success';
+                captureBtn.style.display = 'block';  // Show manual capture button
+                
+                // Verify video is playing
+                video.onloadedmetadata = function() {
+                    console.log('Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
+                };
+                
+                video.onplay = function() {
+                    console.log('Video started playing');
+                };
+                
+                video.onerror = function(error) {
+                    console.error('Video error:', error);
+                    statusDiv.innerText = "Video playback error: " + error.message;
+                    statusDiv.className = 'error';
+                };
+            })
+            .catch(err => { 
+                console.error('Camera access failed:', err);
+                statusDiv.innerText = `Cannot access camera: ${err.message}. Please check permissions or use HTTPS.`;
+                statusDiv.className = 'error';
+                
+                // Show additional help message
+                const helpDiv = document.createElement('div');
+                helpDiv.innerHTML = `
+                    <p><strong>Camera access issues:</strong></p>
+                    <ul style="text-align: left;">
+                        <li>Make sure you allow camera permissions</li>
+                        <li>Use HTTPS (https://) instead of HTTP</li>
+                        <li>Check if camera is being used by another application</li>
+                        <li>Try refreshing the page</li>
+                        <li><a href="/camera-test" target="_blank">Open Camera Test Page</a></li>
+                    </ul>
+                    <button onclick="location.reload()">Refresh Page</button>
+                `;
+                helpDiv.style.marginTop = '20px';
+                document.body.appendChild(helpDiv);
+                
+                // Show backup upload option
+                backupUpload.style.display = 'block';
+            });
+
+        // Debug button to check video status
+        debugBtn.onclick = function() {
+            console.log('=== VIDEO DEBUG INFO ===');
+            console.log('Video element:', video);
+            console.log('Video srcObject:', video.srcObject);
+            console.log('Video readyState:', video.readyState);
+            console.log('Video videoWidth:', video.videoWidth);
+            console.log('Video videoHeight:', video.videoHeight);
+            console.log('Video paused:', video.paused);
+            console.log('Video muted:', video.muted);
+            console.log('Video style.display:', video.style.display);
+            console.log('Video computed style:', window.getComputedStyle(video));
+            
+            let debugInfo = `
+                Video Element Debug:
+                - srcObject: ${video.srcObject ? 'Present' : 'NULL'}
+                - readyState: ${video.readyState} (4=HAVE_ENOUGH_DATA)
+                - dimensions: ${video.videoWidth}x${video.videoHeight}
+                - paused: ${video.paused}
+                - display: ${window.getComputedStyle(video).display}
+            `;
+            
+            alert(debugInfo);
+        };
+
+        // Handle manual capture
+        captureBtn.onclick = function() {
+            if (video.srcObject) {
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                capturedImage = canvas.toDataURL('image/jpeg');
+                statusDiv.innerText = "Photo captured. Processing...";
+                captureBtn.style.display = 'none';
+                processImage();
+            }
+        };
+
+        // Handle file upload as backup option
+        uploadBtn.onclick = function() {
+            const file = fileInput.files[0];
+            if (!file) {
+                statusDiv.innerText = "Please select an image file.";
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                capturedImage = e.target.result;
+                statusDiv.innerText = "Image uploaded. Processing...";
+                backupUpload.style.display = 'none';
+                processImage();
+            };
+            reader.readAsDataURL(file);
+        };
+
+        // Tự động chụp ảnh sau 3 giây (chỉ khi camera hoạt động)
+        let autoCapture = setTimeout(() => {
+            if (video.srcObject) {  // Only if camera is working
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                capturedImage = canvas.toDataURL('image/jpeg');
+                statusDiv.innerText = "Detecting...";
+                processImage();
+            }
+        }, 3000);
+
+        // Function to process image (either from camera or upload)
+        function processImage() {
+            if (!capturedImage) {
+                statusDiv.innerText = "No image to process.";
+                return;
+            }
+            
+            // Get table context from URL parameters
+            const params = new URLSearchParams(window.location.search);
+            const tableToken = params.get('table_token');
+            const tableId = params.get('table_id');
+            
+            // Gửi ảnh về backend nhận diện (include table context)
+            const requestBody = { image: capturedImage };
+            if (tableToken) requestBody.table_token = tableToken;
+            if (tableId) requestBody.table_id = tableId;
+            
+            fetch('/face-login', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") {
+                    statusDiv.innerText = "Welcome, " + data.name + "!";
+                    // If server provided redirect URL, use it; otherwise fallback to mobile_menu with table token/id
+                    const redirectUrl = data.redirect || (() => {
+                        if (tableToken) return `/mobile_menu?table_token=${encodeURIComponent(tableToken)}`;
+                        if (tableId) return `/mobile_menu?table_id=${encodeURIComponent(tableId)}`;
+                        return '/mobile_menu';
+                    })();
+                    setTimeout(() => { window.location.href = redirectUrl; }, 700);
+                } else if (data.status === "new_user") {
+                    statusDiv.innerText = "Face not recognized. Please register.";
+                    registerForm.style.display = "block";
+                } else {
+                    statusDiv.innerText = "Recognition failed.";
+                }
+            })
+            .catch(() => { statusDiv.innerText = "Server error!"; });
+        }
+
+        registerBtn.onclick = function() {
+            const name = nameInput.value.trim();
+            if (!name) {
+                statusDiv.innerText = "Please enter your name.";
+                return;
+            }
+            if (!capturedImage) {
+                statusDiv.innerText = "Please capture or upload a photo first.";
+                return;
+            }
+            statusDiv.innerText = "Registering...";
+            
+            // Get table context from URL parameters
+            const params = new URLSearchParams(window.location.search);
+            const tableToken = params.get('table_token');
+            const tableId = params.get('table_id');
+            
+            // Prepare request body with table context
+            const requestBody = { name: name, image: capturedImage };
+            if (tableToken) requestBody.table_token = tableToken;
+            if (tableId) requestBody.table_id = tableId;
+            
+            fetch('/face-register', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "registered") {
+                    statusDiv.innerText = "Registered! Welcome, " + data.name + "!";
+                    const redirectUrl = data.redirect || (() => {
+                        if (tableToken) return `/mobile_menu?table_token=${encodeURIComponent(tableToken)}`;
+                        if (tableId) return `/mobile_menu?table_id=${encodeURIComponent(tableId)}`;
+                        return '/mobile_menu';
+                    })();
+                    setTimeout(() => { window.location.href = redirectUrl; }, 700);
+                } else {
+                    statusDiv.innerText = "Registration failed.";
+                }
+            })
+            .catch(() => { statusDiv.innerText = "Server error!"; });
+        };
+    </script>
+</body>
+</html>

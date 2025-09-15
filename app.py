@@ -177,7 +177,22 @@ staff_calls = []  # Mỗi phần tử: {'user_id': ..., 'table_id': ..., 'timest
 
 @app.route('/')
 def index():
-    return redirect(url_for('admin_login'))
+    """Trang welcome chính giới thiệu hệ thống"""
+    return render_template('main_welcome.html')
+
+@app.route('/welcome')
+def welcome():
+    """Alias cho trang welcome"""
+    return render_template('main_welcome.html')
+
+@app.route('/chat')
+def chat():
+    """Trang chat với AI chatbot"""
+    # Kiểm tra nếu có session user, không thì redirect đến face login
+    user_id = session.get('user_id') or session.get('user_name')
+    if not user_id:
+        return redirect(url_for('face_login_route'))
+    return render_template('chat.html', user_id=user_id)
 
 
 

@@ -24,6 +24,24 @@
             box-shadow: 0 2px 8px #007bff11;
             position: relative;
         }
+        .preference-btn-header {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        .preference-btn-header:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
         .chat-header .bot-icon {
             font-size: 1.5rem;
             margin-bottom: 2px;
@@ -499,11 +517,191 @@
             0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1); }
         }
+
+        /* Modal đề xuất sở thích */
+        .preference-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .preference-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .preference-content {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+        }
+
+        .preference-modal.show .preference-content {
+            transform: scale(1);
+        }
+
+        .preference-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .preference-header .icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .preference-header h3 {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .preference-header p {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .preference-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .preference-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preference-btn.accept {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .preference-btn.accept:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .preference-btn.decline {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 1px solid #dee2e6;
+        }
+
+        .preference-btn.decline:hover {
+            background: #e9ecef;
+        }
+
+        /* Form nhập sở thích */
+        .preference-form {
+            display: none;
+            animation: slideInUp 0.3s ease;
+        }
+
+        .preference-form.show {
+            display: block;
+        }
+
+        .preference-textarea {
+            width: 100%;
+            min-height: 100px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 0.9rem;
+            resize: vertical;
+            transition: border-color 0.2s ease;
+        }
+
+        .preference-textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        .preference-submit {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            margin-top: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preference-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        }
+
+        .preference-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Hiệu ứng cho recommendation */
+        .recommendation-message {
+            border-left: 4px solid #ff6b6b;
+            background: linear-gradient(135deg, #fff5f5, #fef7f0);
+            padding: 16px;
+            border-radius: 0 12px 12px 12px;
+            margin: 8px 0;
+        }
+
+        .recommendation-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            color: #e74c3c;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
 <div class="chat-container">
     <div class="chat-header">
+        <button class="preference-btn-header" id="open-preference-btn" title="Đề xuất theo sở thích">
+            <i class="fas fa-heart"></i> Đề xuất
+        </button>
         <span class="bot-icon">🤖</span>
         <span class="main-title">Chatbot Ẩm Thực Việt Nam</span>
         <div class="desc">Hỏi đáp, gợi ý món ăn, đặt món nhanh chóng!</div>
@@ -1263,5 +1461,260 @@ if ('webkitSpeechRecognition' in window) {
     }, 1000);
 
 </script>
+
+<!-- Modal đề xuất sở thích -->
+<div class="preference-modal" id="preference-modal">
+    <div class="preference-content">
+        <div class="preference-header">
+            <div class="icon">🍽️</div>
+            <h3>Đề xuất món ăn theo sở thích</h3>
+            <p>Hãy cho tôi biết sở thích ăn uống của bạn để tôi có thể hỗ trợ bạn tốt hơn! Tôi sẽ gợi ý những món ăn phù hợp nhất.</p>
+        </div>
+        
+        <div class="preference-initial" id="preference-initial">
+            <div class="preference-buttons">
+                <button class="preference-btn accept" id="accept-preference">
+                    <i class="fas fa-heart"></i> Đồng ý
+                </button>
+                <button class="preference-btn decline" id="decline-preference">
+                    <i class="fas fa-times"></i> Từ chối
+                </button>
+            </div>
+        </div>
+        
+        <div class="preference-form" id="preference-form">
+            <textarea 
+                class="preference-textarea" 
+                id="preference-input" 
+                placeholder="Ví dụ: Tôi ăn low carb, thích cay, nhiều rau xanh, không ăn hải sản, yêu thích món thanh đạm..."
+                maxlength="500"
+            ></textarea>
+            <button class="preference-submit" id="submit-preference">
+                <i class="fas fa-magic"></i> Tạo đề xuất thông minh
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Xử lý modal đề xuất sở thích
+class PreferenceManager {
+    constructor() {
+        this.modal = document.getElementById('preference-modal');
+        this.acceptBtn = document.getElementById('accept-preference');
+        this.declineBtn = document.getElementById('decline-preference');
+        this.submitBtn = document.getElementById('submit-preference');
+        this.preferenceInput = document.getElementById('preference-input');
+        this.initialSection = document.getElementById('preference-initial');
+        this.formSection = document.getElementById('preference-form');
+        
+        this.hasShownModal = localStorage.getItem('hasShownPreferenceModal') === 'true';
+        
+        this.initializeEvents();
+        this.checkShowModal();
+    }
+    
+    initializeEvents() {
+        // Nút trong header
+        const openPreferenceBtn = document.getElementById('open-preference-btn');
+        if (openPreferenceBtn) {
+            openPreferenceBtn.addEventListener('click', () => this.showModal());
+        }
+        
+        this.acceptBtn.addEventListener('click', () => this.showPreferenceForm());
+        this.declineBtn.addEventListener('click', () => this.closeModal());
+        this.submitBtn.addEventListener('click', () => this.submitPreferences());
+        
+        // Đóng modal khi click outside
+        this.modal.addEventListener('click', (e) => {
+            if (e.target === this.modal) {
+                this.closeModal();
+            }
+        });
+        
+        // Xử lý enter trong textarea
+        this.preferenceInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                this.submitPreferences();
+            }
+        });
+    }
+    
+    checkShowModal() {
+        // Không tự động hiển thị modal, người dùng tự click nút
+        // Modal sẽ chỉ hiển thị khi người dùng click nút "Đề xuất" ở header
+    }
+    
+    showModal() {
+        this.modal.classList.add('show');
+        // Reset về trạng thái ban đầu
+        this.initialSection.style.display = 'block';
+        this.formSection.classList.remove('show');
+    }
+    
+    closeModal() {
+        this.modal.classList.remove('show');
+        localStorage.setItem('hasShownPreferenceModal', 'true');
+        this.hasShownModal = true;
+    }
+    
+    showPreferenceForm() {
+        this.initialSection.style.display = 'none';
+        this.formSection.classList.add('show');
+        this.preferenceInput.focus();
+    }
+    
+    async submitPreferences() {
+        const preferences = this.preferenceInput.value.trim();
+        if (!preferences) {
+            alert('Vui lòng nhập sở thích của bạn!');
+            return;
+        }
+        
+        // Disable button và hiển thị loading
+        this.submitBtn.disabled = true;
+        this.submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang phân tích...';
+        
+        try {
+            // Lưu sở thích vào localStorage
+            localStorage.setItem('userPreferences', preferences);
+            
+            // Tạo prompt cho AI
+            const prompt = `Dựa vào sở thích ăn uống: "${preferences}". Hãy phân tích và đề xuất 5-7 món ăn Việt Nam phù hợp từ menu nhà hàng. Trình bày dưới dạng danh sách với tên món, giá cả và lý do phù hợp.`;
+            
+            // Gọi API chatbot
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: prompt,
+                    isPreferenceRequest: true
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.response) {
+                // Đóng modal
+                this.closeModal();
+                
+                // Hiển thị kết quả trong chat
+                this.displayRecommendation(data.response);
+                
+                // Hiển thị thông báo thành công
+                this.showSuccessMessage();
+            } else {
+                throw new Error('Không nhận được phản hồi từ AI');
+            }
+            
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Có lỗi xảy ra khi xử lý sở thích. Vui lòng thử lại!');
+        } finally {
+            // Restore button
+            this.submitBtn.disabled = false;
+            this.submitBtn.innerHTML = '<i class="fas fa-magic"></i> Tạo đề xuất thông minh';
+        }
+    }
+    
+    displayRecommendation(recommendation) {
+        // Thêm tin nhắn đề xuất vào chat
+        const chatBody = document.getElementById('chat-body');
+        
+        // Tạo message element
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-message bot';
+        
+        const avatar = document.createElement('span');
+        avatar.className = 'avatar';
+        avatar.textContent = '🤖';
+        
+        const msgDiv = document.createElement('span');
+        msgDiv.className = 'msg recommendation-message';
+        
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'recommendation-header';
+        headerDiv.innerHTML = '<i class="fas fa-magic"></i> Đề xuất món ăn theo sở thích của bạn';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.innerHTML = recommendation;
+        
+        msgDiv.appendChild(headerDiv);
+        msgDiv.appendChild(contentDiv);
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(msgDiv);
+        
+        chatBody.appendChild(messageDiv);
+        chatBody.scrollTop = chatBody.scrollHeight;
+        
+        // Không sử dụng typewriter effect cho HTML content để tránh lỗi
+        // this.typeWriterEffect(contentDiv, contentDiv.innerHTML);
+    }
+    
+    typeWriterEffect(element, text) {
+        element.innerHTML = '';
+        let i = 0;
+        
+        function typeChar() {
+            if (i < text.length) {
+                element.innerHTML += text.charAt(i);
+                i++;
+                setTimeout(typeChar, 20);
+            }
+        }
+        
+        typeChar();
+    }
+    
+    showSuccessMessage() {
+        // Hiển thị toast thông báo thành công
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            z-index: 1001;
+            font-weight: 500;
+            animation: slideInRight 0.3s ease;
+        `;
+        toast.innerHTML = '<i class="fas fa-check"></i> Đã tạo đề xuất thành công!';
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+}
+
+// Khởi tạo PreferenceManager khi trang load
+document.addEventListener('DOMContentLoaded', function() {
+    window.preferenceManager = new PreferenceManager();
+});
+
+// CSS animation cho toast
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+`;
+document.head.appendChild(style);
+</script>
+
 </body>
 </html>

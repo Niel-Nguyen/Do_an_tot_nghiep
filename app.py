@@ -554,6 +554,8 @@ def api_clear_cart():
 def chat_api():
     ensure_chatbot_ready()
     user_message = request.json.get('message', '')
+    is_preference_request = request.json.get('isPreferenceRequest', False)
+    
     if not user_message.strip():
         return jsonify({'response': 'Vui lòng nhập nội dung câu hỏi.'})
     
@@ -562,9 +564,28 @@ def chat_api():
     user_id = table_id or request.remote_addr or 'default'
     print(f"[DEBUG] chat_api: table_id={table_id}, user_id={user_id}, remote_addr={request.remote_addr}")
     print(f"[DEBUG] chat_api: user_message={user_message}")
-    print(f"[DEBUG] chat_api: current dish_status_map in app.py = {dish_status_map}")
+    print(f"[DEBUG] chat_api: is_preference_request={is_preference_request}")
     
-    bot_response = vietnamese_food_chatbot.chat(user_message, user_id=user_id)
+    # Xử lý đặc biệt cho preference request
+    if is_preference_request:
+        try:
+            from core.recommendation_engine import recommendation_engine
+            
+            # Lấy đề xuất từ recommendation engine
+            recommendations = recommendation_engine.get_recommendations(user_message, top_k=7)
+            
+            # Format response
+            bot_response = recommendation_engine.format_recommendation_response(recommendations, user_message)
+            
+            print(f"[DEBUG] Generated {len(recommendations)} recommendations")
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to get recommendations: {e}")
+            bot_response = "Xin lỗi, tôi đang gặp sự cố khi phân tích sở thích của bạn. Vui lòng thử chat thông thường!"
+    else:
+        # Chat thông thường
+        bot_response = vietnamese_food_chatbot.chat(user_message, user_id=user_id)
+    
     print(f"[DEBUG] chat_api: bot_response={bot_response[:100]}...")
     
     # Làm sạch HTML tags để đọc text-to-speech

@@ -42,6 +42,24 @@
             background: rgba(255, 255, 255, 0.3);
             transform: scale(1.05);
         }
+        .preference-btn-header.pulse {
+            animation: pulseGlow 2s infinite;
+        }
+        @keyframes pulseGlow {
+            0% { 
+                background: rgba(255, 255, 255, 0.2);
+                box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+            }
+            50% { 
+                background: rgba(255, 255, 255, 0.4);
+                box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+                transform: scale(1.08);
+            }
+            100% { 
+                background: rgba(255, 255, 255, 0.2);
+                box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+            }
+        }
         .chat-header .bot-icon {
             font-size: 1.5rem;
             margin-bottom: 2px;
@@ -1541,8 +1559,13 @@ class PreferenceManager {
     }
     
     checkShowModal() {
-        // Không tự động hiển thị modal, người dùng tự click nút
-        // Modal sẽ chỉ hiển thị khi người dùng click nút "Đề xuất" ở header
+        // Tự động hiển thị modal đề xuất món ăn khi lần đầu vào chatbot
+        if (!this.hasShownModal) {
+            // Đợi một chút để trang load hoàn toàn
+            setTimeout(() => {
+                this.showModal();
+            }, 1500); // Delay 1.5 giây để trang load mượt
+        }
     }
     
     showModal() {
@@ -1697,6 +1720,31 @@ class PreferenceManager {
 // Khởi tạo PreferenceManager khi trang load
 document.addEventListener('DOMContentLoaded', function() {
     window.preferenceManager = new PreferenceManager();
+    
+    // Thêm thông báo chào mừng tự động
+    const hasShownWelcome = localStorage.getItem('hasShownWelcome') === 'true';
+    const hasShownModal = localStorage.getItem('hasShownPreferenceModal') === 'true';
+    
+    if (!hasShownWelcome) {
+        setTimeout(() => {
+            addMessage('Xin chào! 👋 Chào mừng bạn đến với Chatbot Ẩm Thực Việt Nam! 🍜\n\nTôi có thể giúp bạn:\n• 🎯 Đề xuất món ăn theo sở thích\n• 📋 Tìm kiếm món ăn trong menu\n• 💡 Tư vấn dinh dưỡng và cách chế biến\n\n💫 <strong>Đặc biệt:</strong> Click nút "Đề xuất" ở góc phải để tôi gợi ý những món ăn phù hợp nhất với sở thích của bạn!', 'bot');
+            localStorage.setItem('hasShownWelcome', 'true');
+        }, 800); // Hiển thị thông báo chào trước khi modal xuất hiện
+    }
+    
+    // Thêm hiệu ứng pulse cho nút đề xuất nếu chưa từng mở modal
+    if (!hasShownModal) {
+        const preferenceBtn = document.getElementById('open-preference-btn');
+        if (preferenceBtn) {
+            setTimeout(() => {
+                preferenceBtn.classList.add('pulse');
+                // Tắt hiệu ứng sau khi modal được mở
+                preferenceBtn.addEventListener('click', () => {
+                    preferenceBtn.classList.remove('pulse');
+                }, { once: true });
+            }, 2500); // Bắt đầu pulse sau khi thông báo chào hiển thị
+        }
+    }
 });
 
 // CSS animation cho toast

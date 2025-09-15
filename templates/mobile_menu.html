@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Menu Nhà Hàng (Mobile)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { background: #f8f9fa; margin: 0; }
+        .menu-header { background: linear-gradient(90deg,#007bff 60%,#00c6ff 100%); color: #fff; border-radius: 0 0 18px 18px; padding: 18px 0 10px 0; text-align: center; margin-bottom: 12px; position: relative; min-height: 60px; }
+        .menu-header h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; padding: 0 80px 0 20px; }
+        .menu-header .desc { font-size: 1rem; color: #eaf6ff; padding: 0 80px 0 20px; }
+        .sticky-filter { position: sticky; top: 0; z-index: 100; background: #f8f9fa; padding-top: 8px; }
+        .dish-card { box-shadow: 0 2px 12px #0001; border-radius: 18px; background: #fff; margin-bottom: 18px; transition: box-shadow 0.2s, border 0.2s, background 0.2s; border: 2px solid transparent; cursor: pointer; overflow: hidden; }
+        .dish-card.selected { border: 2px solid #007bff; background: #eaf6ff; box-shadow: 0 4px 24px #007bff22; }
+        .dish-card:active { box-shadow: 0 2px 8px #007bff44; }
+        .dish-img { width: 100%; height: 150px; object-fit: cover; border-radius: 16px 16px 0 0; }
+        .dish-info { display: flex; flex-direction: column; align-items: center; width: 100%; padding: 0; }
+        .dish-title { font-size: 1.1rem; font-weight: 700; color: #007bff; margin-bottom: 2px; max-height: 2.8em; overflow: hidden; text-overflow: ellipsis; white-space: normal; }
+        .dish-price { color: #28a745; font-weight: bold; font-size: 1.05rem; margin-bottom: 8px; }
+        .qty-group { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 4px; }
+        .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: none; background: #e3f0ff; color: #007bff; font-size: 1.2rem; font-weight: bold; }
+        .qty-btn:active { background: #b6e0ff; }
+        .qty-input { width: 38px; text-align: center; border: 1px solid #ddd; border-radius: 8px; font-size: 1.1rem; }
+        .order-btn { margin: 18px auto 0 auto; display: block; font-size: 1.1rem; padding: 12px 0; border-radius: 20px; width: 96vw; max-width: 98vw; position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 9999; box-shadow: 0 4px 24px #007bff33; }
+        .dropdown, .form-select, #search-input { font-size: 1rem; }
+        .row.mb-3 { margin-bottom: 10px!important; }
+        .dropdown-toggle, .form-select, #search-input { padding: 8px 10px; }
+        .modal-content { min-width: 90vw!important; }
+        .modal-header, .modal-footer { padding: 10px 16px; }
+        .modal-title { font-size: 1.1rem; }
+        .btn { font-size: 1rem; }
+        .badge { font-size: 0.85em; }
+        @media (max-width: 600px) {
+            .dish-img { height: 120px; }
+            .menu-header { padding: 10px 0 6px 0; min-height: 50px; }
+            .menu-header h1 { font-size: 1.2rem; padding: 0 70px 0 15px; }
+            .menu-header .desc { font-size: 0.9rem; padding: 0 70px 0 15px; }
+            .order-btn { font-size: 1rem; padding: 12px 0; }
+            .auto-speak-toggle {
+                top: 8px;
+                right: 10px;
+                padding: 4px 8px;
+                font-size: 11px;
+                border-radius: 12px;
+            }
+            .auto-speak-toggle label {
+                gap: 6px;
+            }
+        }
+        .scrolling-tabs { scrollbar-width: thin; }
+        .scrolling-tabs::-webkit-scrollbar { height: 4px; background: #eee; }
+        .scrolling-tabs::-webkit-scrollbar-thumb { background: #b6e0ff; border-radius: 4px; }
+        .dish-grid { display: flex; flex-wrap: wrap; gap: 16px 8px; justify-content: flex-start; }
+        .dish-card {
+            width: 95vw;
+            min-width: 220px;
+            max-width: 340px;
+            aspect-ratio: 1/1.1;
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 16px 8px 12px 8px;
+            position: relative;
+        }
+        .dish-img {
+            height: 120px;
+            max-width: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+        .dish-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0;
+        }
+        .dish-title {
+            font-size: 1.08rem;
+            font-weight: 600;
+            color: #007bff;
+            margin: 12px 0 0 0;
+            text-align: center;
+            word-break: break-word;
+            white-space: normal;
+            line-height: 1.2;
+            min-height: 3.2em;
+            max-height: 4.4em;
+            overflow: hidden;
+        }
+        .dish-price { color: #28a745; font-weight: bold; font-size: 1.05rem; text-align: center; word-break: break-word; white-space: normal; line-height: 1.2; min-height: 1.8em; }
+        .qty-group { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; }
+        .qty-btn { width: 28px; height: 28px; border-radius: 50%; border: none; background: #e3f0ff; color: #007bff; font-size: 1.15rem; font-weight: bold; }
+        .qty-btn:active { background: #b6e0ff; }
+        .qty-input { width: 36px; text-align: center; border: 1px solid #ddd; border-radius: 8px; font-size: 1.08rem; }
+        @media (max-width: 600px) {
+            .dish-card { width: 32vw; min-width: 100px; max-width: 120px; aspect-ratio: 1/1.6; }
+            .dish-img { height: 90px; }
+            .dish-title, .dish-price { font-size: 1rem; }
+        }
+
+        /* Hiệu ứng âm thanh */
+        .audio-controls {
+            display: inline-flex;
+            gap: 5px;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        .audio-controls .btn {
+            padding: 2px 6px;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+        
+        .speaking-pulse {
+            animation: speaking-pulse 1s infinite;
+        }
+        
+        .auto-speak-toggle {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            font-size: 12px;
+            z-index: 10;
+        }
+        
+        .auto-speak-toggle label {
+            margin: 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .auto-speak-toggle input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        @keyframes speaking-pulse {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+            }
+            50% { 
+                transform: scale(1.02);
+                box-shadow: 0 0 15px rgba(0, 123, 255, 0.6);
+            }
+        }
+
+        /* Hiệu ứng microphone */
+        .mic-btn {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .mic-btn.active {
+            background: linear-gradient(45deg, #007bff, #00c6ff);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(0, 123, 255, 0.4);
+        }
+        .mic-btn.recording {
+            background: linear-gradient(45deg, #dc3545, #ff6b6b);
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(220, 53, 69, 0.5);
+            animation: recording-pulse 1.5s infinite;
+        }
+        .mic-btn.recording::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            animation: ripple 1.5s infinite;
+        }
+
+        /* Hiệu ứng sóng âm */
+        .audio-waves {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            pointer-events: none;
+        }
+        .mic-btn.recording .audio-waves {
+            display: block;
+        }
+        .wave {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: wave 2s infinite;
+        }
+        .wave:nth-child(2) {
+            animation-delay: 0.5s;
+        }
+        .wave:nth-child(3) {
+            animation-delay: 1s;
+        }
+
+        /* Hiệu ứng chờ nói */
+        .listening-indicator {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 40px;
+            border-radius: 25px;
+            text-align: center;
+            z-index: 10001;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            min-width: 280px;
+        }
+        .listening-indicator.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        .listening-indicator .mic-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: listening-pulse 2s infinite;
+        }
+        .listening-indicator .text {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .listening-indicator .subtext {
+            font-size: 1rem;
+            color: #ccc;
+            margin-bottom: 25px;
+        }
+        .listening-indicator .volume-bars {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            height: 40px;
+            align-items: flex-end;
+        }
+        .listening-indicator .bar {
+            width: 6px;
+            background: linear-gradient(to top, #007bff, #00c6ff);
+            border-radius: 3px;
+            animation: volume-animation 1.5s infinite ease-in-out;
+        }
+        .listening-indicator .bar:nth-child(1) { animation-delay: 0s; }
+        .listening-indicator .bar:nth-child(2) { animation-delay: 0.1s; }
+        .listening-indicator .bar:nth-child(3) { animation-delay: 0.2s; }
+        .listening-indicator .bar:nth-child(4) { animation-delay: 0.3s; }
+        .listening-indicator .bar:nth-child(5) { animation-delay: 0.4s; }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        @keyframes recording-pulse {
+            0%, 100% { transform: scale(1.1); }
+            50% { transform: scale(1.15); }
+        }
+        @keyframes ripple {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+        @keyframes wave {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+        @keyframes listening-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes volume-animation {
+            0%, 100% { height: 10px; }
+            50% { height: 40px; }
+        }
+
+        /* Cải thiện input group */
+        .input-group .form-control {
+            border-radius: 20px 0 0 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .input-group .form-control:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        .input-group .btn {
+            border-radius: 0 20px 20px 0;
+            border: 2px solid #007bff;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Category UI */
+        .category-chip {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.85rem;
+            color: #6c757d;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .category-chip.active {
+            background: #007bff;
+            border-color: #007bff;
+            color: white;
+        }
+        .category-chip:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+        .category-chip.active:hover {
+            background: #0056b3;
+        }
+        
+        .filter-chip {
+            background: #e7f3ff;
+            border: 1px solid #007bff;
+            border-radius: 15px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            color: #007bff;
+            position: relative;
+            cursor: pointer;
+        }
+        .filter-chip .remove-filter {
+            margin-left: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .main-category-btn {
+            border-radius: 25px !important;
+            padding: 8px 16px !important;
+            font-weight: 600 !important;
+            margin-right: 8px !important;
+            transition: all 0.3s ease !important;
+        }
+        .main-category-btn i {
+            margin-right: 6px;
+        }
+        
+        .category-section {
+            margin-bottom: 12px;
+        }
+        .category-count {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-left: 4px;
+        }
+    </style>
+</head>
+<body>
+<div class="menu-header">
+    <h1>Menu Nhà Hàng</h1>
+    <div class="desc" id="tableInfo">Chọn món, tick vào món để chọn và nhấn "Gửi order"!</div>
+    <div class="auto-speak-toggle">
+        <label class="form-check-label">
+            <input type="checkbox" class="form-check-input" id="auto-speak-toggle" checked>
+            <i class="fas fa-volume-up"></i> Tự động đọc
+        </label>
+    </div>
+</div>
+<div class="container-fluid px-2">
+    <div class="row mb-3 align-items-end gx-1 sticky-filter">
+        <div class="col-4">
+            <select class="form-select" id="sort-select">
+                <option value="">Sắp xếp</option>
+                <option value="price-asc">Giá tăng dần</option>
+                <option value="price-desc">Giá giảm dần</option>
+                <option value="featured">Nổi bật</option>
+                <option value="new">Mới</option>
+            </select>
+        </div>
+        <div class="col-8">
+            <div class="input-group">
+                <input type="text" class="form-control" id="search-input" placeholder="🔍 Tìm món...">
+                <button class="btn btn-secondary mic-btn" type="button" id="mic-btn">
+                    <i class="fas fa-microphone"></i>
+                    <div class="audio-waves">
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Category Filters -->
+    <div class="mb-3">
+        <!-- Main Category Tabs -->
+        <div id="main-category-tabs" class="scrolling-tabs mb-2" style="overflow-x:auto;white-space:nowrap;padding:0 0 8px 0;">
+            <!-- Main category buttons sẽ được render bằng JS -->
+        </div>
+        
+        <!-- Sub Category Chips -->
+        <div id="sub-category-chips" class="d-flex flex-wrap gap-2 mb-2" style="min-height: 32px;">
+            <!-- Sub category chips sẽ được render bằng JS -->
+        </div>
+        
+        <!-- Active Filters Display -->
+        <div id="active-filters" class="d-flex flex-wrap gap-1" style="min-height: 24px;">
+            <!-- Active filters sẽ được hiển thị ở đây -->
+        </div>
+    </div>
+    <div class="row" id="dish-list"></div>
+    <button class="btn btn-primary order-btn" id="order-btn">Gửi order</button>
+</div>
+
+<!-- Indicator chờ nói -->
+<div class="listening-indicator" id="listening-indicator">
+    <div class="mic-icon">🎤</div>
+    <div class="text">Đang lắng nghe...</div>
+    <div class="subtext">Hãy nói rõ ràng vào microphone</div>
+    <div class="volume-bars">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+    </div>
+</div>
+
+<!-- Thanh taskbar dưới cùng -->
+<div id="mobile-taskbar" style="position:fixed;bottom:0;left:0;width:100vw;height:62px;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -2px 16px #007bff22;z-index:10000;display:flex;align-items:center;justify-content:space-between;padding:0 18px 0 18px;gap:10px;">
+    <button class="btn btn-primary" id="taskbar-order-btn" style="height:44px;min-width:110px;font-size:1.05rem;border-radius:16px;box-shadow:0 2px 8px #007bff22;">Gửi order</button>
+    <div style="display:flex;gap:12px;">
+        <button id="taskbar-staff-btn" style="background:#fff;color:#007bff;border:none;border-radius:50%;width:44px;height:44px;box-shadow:0 2px 8px #e83e8c22;font-size:1.5rem;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;">
+            <i class="fa-solid fa-user-large"></i>
+        </button>
+        <button id="taskbar-cart-btn" style="background:#fff;color:#007bff;border:none;border-radius:50%;width:44px;height:44px;box-shadow:0 2px 8px #0003;font-size:1.5rem;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+            <i class="fas fa-shopping-cart"></i>
+        </button>
+        <button id="taskbar-chatbot-btn" style="background:#007bff;color:#fff;border:none;border-radius:50%;width:48px;height:48px;box-shadow:0 2px 8px #0003;font-size:1.7rem;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+            <i class="fas fa-comments"></i>
+        </button>
+    </div>
+</div>
+<!-- Ẩn các nút nổi cũ và nút order cũ -->
+<style>
+#open-cart-btn, #open-chatbot-btn, #order-btn { display: none !important; }
+body { padding-bottom: 80px; }
+.qty-group {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 4px;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+}
+.qty-btn, .qty-input {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+#taskbar-staff-btn:active {
+    background: #ffe6f0;
+    box-shadow: 0 2px 8px #e83e8c44;
+}
+#staff-btn-badge {
+    transition: transform 0.2s;
+}
+#staff-btn-badge[style*="display: block"] {
+    transform: scale(1.2);
+}
+</style>
+<!-- Modal chatbot -->
+<div class="modal fade" id="chatbotModal" tabindex="-1" aria-labelledby="chatbotModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen m-0" style="max-width:100vw;width:100vw;height:100vh;">
+    <div class="modal-content p-0 border-0 shadow-none" style="border-radius:0;overflow:hidden;min-width:100vw;min-height:100vh;background:#fff;">
+      <div class="modal-header p-2 border-0" style="background:transparent;position:absolute;top:0;right:0;z-index:10;width:100vw;display:flex;justify-content:flex-end;align-items:flex-start;">
+        <button type="button" class="btn btn-light btn-lg d-flex align-items-center justify-content-center" data-bs-dismiss="modal" aria-label="Close" style="font-size:1.5rem;border-radius:50%;width:36px;height:36px;box-shadow:0 2px 8px #0002;display:flex;align-items:center;justify-content:center;"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body p-0" style="background:transparent;height:100vh;width:100vw;overflow:hidden;">
+        <iframe id="chatbot-iframe" src="" style="width:100vw;height:100vh;border:none;background:transparent;display:block;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Icon giỏ hàng góc phải trên -->
+<button id="open-cart-btn" style="position:fixed;top:18px;right:18px;z-index:9999;background:#fff;color:#007bff;border:none;border-radius:50%;width:48px;height:48px;box-shadow:0 2px 8px #0003;font-size:1.7rem;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+    <i class="fas fa-shopping-cart"></i>
+</button>
+<!-- Modal giỏ hàng -->
+<div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:18px;overflow:hidden;min-width:90vw;">
+      <div class="modal-header">
+        <h5 class="modal-title" id="cartModalLabel">Giỏ hàng của bạn</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0" id="cart-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Modal QR chuyển khoản -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:18px;overflow:hidden;min-width:90vw;">
+      <div class="modal-header">
+        <h5 class="modal-title" id="qrModalLabel">Thanh toán chuyển khoản</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="qr-modal-body">
+        <div class="text-center text-muted">Đang lấy mã QR...</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Lấy table_id từ server-side variable
+const serverTableId = "{{ table_id if table_id else '' }}";
+const tableToken = "{{ table_token if table_token else '' }}";
+
+// Table status monitoring - Kiểm tra trạng thái bàn mỗi 2 giây
+let tableStatusInterval;
+
+function startTableStatusMonitoring() {
+    if (!tableToken) {
+        console.log('No table token found, skipping monitoring');
+        return;
+    }
+    
+    console.log('Starting table status monitoring for token:', tableToken.substring(0, 8) + '...');
+    
+    tableStatusInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/table/status/${tableToken}`);
+            console.log('Table status check:', response.status);
+            
+            if (response.status === 404) {
+                // Token không tồn tại -> bàn đã đóng
+                console.log('Table token invalidated - redirecting...');
+                clearInterval(tableStatusInterval);
+                // Reset cart trước khi chuyển hướng
+                await checkAndResetCartOnTokenChange();
+                showTableClosedNotification();
+                return;
+            }
+            
+            if (response.ok) {
+                const status = await response.json();
+                console.log('Table status:', status);
+                
+                // Kiểm tra token có thay đổi không
+                if (status.session_token && status.session_token !== tableToken) {
+                    console.log('🔄 Table token changed in status check');
+                    console.log('Old token:', tableToken);
+                    console.log('New token:', status.session_token);
+                    // Cập nhật token và reset cart
+                    tableToken = status.session_token;
+                    await checkAndResetCartOnTokenChange();
+                }
+                
+                // Nếu bàn đã đóng, chuyển hướng ngay lập tức
+                if (status.is_closed || status.status === 'closed' || !status.token_valid) {
+                    console.log('Table closed - redirecting...');
+                    clearInterval(tableStatusInterval);
+                    // Reset cart trước khi chuyển hướng
+                    await checkAndResetCartOnTokenChange();
+                    showTableClosedNotification();
+                }
+            }
+        } catch (error) {
+            console.error('Error checking table status:', error);
+        }
+    }, 2000); // Kiểm tra mỗi 2 giây
+}
+
+function showTableClosedNotification() {
+    // Dừng tất cả interval và event listeners
+    if (tableStatusInterval) {
+        clearInterval(tableStatusInterval);
+    }
+    
+    // Tạo overlay thông báo
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        color: white;
+        text-align: center;
+        font-family: Arial, sans-serif;
+    `;
+    
+    overlay.innerHTML = `
+        <div style="background: #fff; padding: 40px; border-radius: 20px; color: #333; max-width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+            <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+            <h3 style="color: #28a745; margin-bottom: 20px;">Cảm ơn quý khách!</h3>
+            <p style="font-size: 1.2rem; margin-bottom: 20px;">
+                Bàn của quý khách đã được đóng.<br>
+                Chúng tôi rất vui được phục vụ quý khách.
+            </p>
+            <div style="color: #6c757d;">
+                <i class="fas fa-spinner fa-spin"></i> 
+                Đang chuyển hướng trong <span id="countdown">3</span> giây...
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Countdown và chuyển hướng
+    let countdown = 3;
+    const countdownElement = document.getElementById('countdown');
+    const countdownInterval = setInterval(() => {
+        countdown--;
+        if (countdownElement) {
+            countdownElement.textContent = countdown;
+        }
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            window.location.href = '/table_closed';
+        }
+    }, 1000);
+}
+
+// Bắt đầu monitoring ngay khi DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, starting table monitoring...');
+    startTableStatusMonitoring();
+});
+
+// Dừng monitoring khi rời trang
+window.addEventListener('beforeunload', function() {
+    if (tableStatusInterval) {
+        clearInterval(tableStatusInterval);
+    }
+});
+
+// --- Copy toàn bộ JS từ menu.html sang mobile_menu.html để mọi chức năng hoạt động ---
+// Lấy danh sách món ăn từ API
+async function fetchDishes() {
+    const res = await fetch('/api/dishes');
+    return await res.json();
+}
+
+let allDishes = [];
+let currentMainCategory = 'Tất cả';
+let currentFilters = {
+    dish_type: '',
+    meal_category: '',
+    region: '',
+    texture: ''
+};
+let searchKeyword = '';
+let currentSort = '';
+let lastDishesJson = '';
+
+// Định nghĩa categories với icons
+const categoryConfig = {
+    'Tất cả': { icon: 'fas fa-utensils', label: 'Tất cả món' },
+    'dish_type': {
+        icon: 'fas fa-star',
+        label: 'Loại món',
+        values: {
+            'Chính': { icon: 'fas fa-drumstick-bite', label: 'Món chính' },
+            'Vặt': { icon: 'fas fa-cookie-bite', label: 'Món vặt' }
+        }
+    },
+    'meal_category': {
+        icon: 'fas fa-leaf',
+        label: 'Chế độ ăn',
+        values: {
+            'Chay': { icon: 'fas fa-seedling', label: 'Món chay' },
+            'Mặn': { icon: 'fas fa-fish', label: 'Món mặn' }
+        }
+    },
+    'region': {
+        icon: 'fas fa-map-marker-alt',
+        label: 'Vùng miền',
+        values: {
+            'Bắc': { icon: 'fas fa-mountain', label: 'Miền Bắc' },
+            'Trung': { icon: 'fas fa-water', label: 'Miền Trung' },
+            'Nam': { icon: 'fas fa-sun', label: 'Miền Nam' }
+        }
+    },
+    'texture': {
+        icon: 'fas fa-tint',
+        label: 'Nước/Khô',
+        values: {
+            'Khô': { icon: 'fas fa-fire', label: 'Món khô' },
+            'Nước': { icon: 'fas fa-tint', label: 'Món nước' }
+        }
+    }
+};
+
+function getUniqueValues(dishes, field) {
+    const values = new Set();
+    dishes.forEach(d => {
+        if (d[field] && d[field].trim()) {
+            values.add(d[field].trim());
+        }
+    });
+    return Array.from(values);
+}
+
+function renderMainCategories(dishes) {
+    const container = document.getElementById('main-category-tabs');
+    let html = `<button class="btn btn-sm main-category-btn${currentMainCategory === 'Tất cả' ? ' btn-primary' : ' btn-outline-primary'}" onclick="selectMainCategory('Tất cả')">
+        <i class="${categoryConfig['Tất cả'].icon}"></i>
+        ${categoryConfig['Tất cả'].label}
+        <span class="category-count">(${dishes.length})</span>
+    </button>`;
+    
+    Object.keys(categoryConfig).forEach(key => {
+        if (key === 'Tất cả') return;
+        const config = categoryConfig[key];
+        const count = getUniqueValues(dishes, key).length;
+        if (count > 0) {
+            html += `<button class="btn btn-sm main-category-btn${currentMainCategory === key ? ' btn-primary' : ' btn-outline-primary'}" onclick="selectMainCategory('${key}')">
+                <i class="${config.icon}"></i>
+                ${config.label}
+                <span class="category-count">(${count})</span>
+            </button>`;
+        }
+    });
+    
+    container.innerHTML = html;
+}
+
+function renderSubCategories(dishes) {
+    const container = document.getElementById('sub-category-chips');
+    
+    if (currentMainCategory === 'Tất cả') {
+        container.innerHTML = '';
+        return;
+    }
+    
+    const categoryData = categoryConfig[currentMainCategory];
+    if (!categoryData || !categoryData.values) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    const availableValues = getUniqueValues(dishes, currentMainCategory);
+    let html = '';
+    
+    availableValues.forEach(value => {
+        const valueConfig = categoryData.values[value] || { icon: 'fas fa-tag', label: value };
+        const isActive = currentFilters[currentMainCategory] === value;
+        const filteredCount = dishes.filter(d => d[currentMainCategory] === value).length;
+        
+        html += `<span class="category-chip${isActive ? ' active' : ''}" onclick="toggleSubCategory('${currentMainCategory}', '${value}')">
+            <i class="${valueConfig.icon}"></i>
+            ${valueConfig.label}
+            <span class="category-count">(${filteredCount})</span>
+        </span>`;
+    });
+    
+    container.innerHTML = html;
+}
+
+function renderActiveFilters() {
+    const container = document.getElementById('active-filters');
+    let html = '';
+    
+    Object.keys(currentFilters).forEach(key => {
+        const value = currentFilters[key];
+        if (value) {
+            const categoryData = categoryConfig[key];
+            const valueConfig = categoryData?.values?.[value] || { label: value };
+            html += `<span class="filter-chip">
+                ${categoryData.label}: ${valueConfig.label}
+                <span class="remove-filter" onclick="removeFilter('${key}')">×</span>
+            </span>`;
+        }
+    });
+    
+    if (searchKeyword) {
+        html += `<span class="filter-chip">
+            Tìm kiếm: "${searchKeyword}"
+            <span class="remove-filter" onclick="clearSearch()">×</span>
+        </span>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+function selectMainCategory(category) {
+    currentMainCategory = category;
+    
+    // Reset filters khi chọn category mới
+    if (category === 'Tất cả') {
+        currentFilters = {
+            dish_type: '',
+            meal_category: '',
+            region: '',
+            texture: ''
+        };
+    } else {
+        // Giữ filter của category hiện tại, reset các filter khác
+        const newFilters = {
+            dish_type: '',
+            meal_category: '',
+            region: '',
+            texture: ''
+        };
+        if (currentFilters[category]) {
+            newFilters[category] = currentFilters[category];
+        }
+        currentFilters = newFilters;
+    }
+    
+    renderMainCategories(allDishes);
+    renderSubCategories(allDishes);
+    renderActiveFilters();
+    renderDishes(allDishes);
+}
+
+function toggleSubCategory(category, value) {
+    if (currentFilters[category] === value) {
+        currentFilters[category] = '';
+    } else {
+        currentFilters[category] = value;
+    }
+    
+    renderSubCategories(allDishes);
+    renderActiveFilters();
+    renderDishes(allDishes);
+}
+
+function removeFilter(category) {
+    currentFilters[category] = '';
+    renderSubCategories(allDishes);
+    renderActiveFilters();
+    renderDishes(allDishes);
+}
+
+function clearSearch() {
+    searchKeyword = '';
+    document.getElementById('search-input').value = '';
+    renderActiveFilters();
+    renderDishes(allDishes);
+}
+function renderDishes(dishes) {
+    const dishList = document.getElementById('dish-list');
+    dishList.innerHTML = '';
+    
+    let filtered = dishes;
+    
+    // Apply category filters
+    Object.keys(currentFilters).forEach(key => {
+        const value = currentFilters[key];
+        if (value && value.trim()) {
+            filtered = filtered.filter(d => d[key] === value);
+        }
+    });
+    
+    // Apply search filter
+    if (searchKeyword) {
+        filtered = filtered.filter(d => 
+            d.name.toLowerCase().includes(searchKeyword) || 
+            (d.description && d.description.toLowerCase().includes(searchKeyword))
+        );
+    }
+    
+    // Apply sorting
+    if (currentSort === 'price-asc') {
+        filtered = filtered.slice().sort((a, b) => (a.price || 0) - (b.price || 0));
+    } else if (currentSort === 'price-desc') {
+        filtered = filtered.slice().sort((a, b) => (b.price || 0) - (a.price || 0));
+    } else if (currentSort === 'featured') {
+        filtered = filtered.slice().sort((a, b) => (b.price || 0) - (a.price || 0)).slice(0, 8);
+    } else if (currentSort === 'new') {
+        filtered = filtered.slice().sort((a, b) => b.name.localeCompare(a.name)).slice(0, 8);
+    }
+    
+    if (!filtered.length) {
+        dishList.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-search fa-2x mb-3"></i><br>Không tìm thấy món nào phù hợp.<br><small>Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</small></div>';
+        window._currentRenderedDishes = [];
+        return;
+    }
+    
+    window._currentRenderedDishes = filtered;
+    
+    // Tạo grid
+    const grid = document.createElement('div');
+    grid.className = 'dish-grid';
+    
+    filtered.forEach((dish, idx) => {
+        let tagHtml = '';
+        if (dish.status === false) {
+            tagHtml += '<span class="badge bg-danger position-absolute top-50 start-50 translate-middle">Tạm hết món</span>';
+        }
+        
+        // Thêm badges cho categories
+        let badgeHtml = '';
+        if (dish.dish_type) {
+            const config = categoryConfig.dish_type?.values?.[dish.dish_type];
+            if (config) {
+                badgeHtml += `<small class="badge bg-primary position-absolute" style="top: 8px; left: 8px;"><i class="${config.icon}"></i></small>`;
+            }
+        }
+        if (dish.meal_category) {
+            const config = categoryConfig.meal_category?.values?.[dish.meal_category];
+            if (config) {
+                badgeHtml += `<small class="badge bg-success position-absolute" style="top: 8px; right: 8px;"><i class="${config.icon}"></i></small>`;
+            }
+        }
+        
+        const card = document.createElement('div');
+        card.className = 'dish-card position-relative' + (dish.status === false ? ' opacity-50' : '');
+        card.setAttribute('data-idx', idx);
+        card.onclick = function() { toggleSelectDish(idx); };
+        card.innerHTML = `
+            ${tagHtml}
+            ${badgeHtml}
+            <img class="dish-img" src="${dish.image || 'https://via.placeholder.com/400x160?text=No+Image'}" alt="${dish.name}">
+            <div class="dish-info">
+                <div class="dish-title">${dish.name}</div>
+                <div class="dish-price">${dish.price ? dish.price.toLocaleString() + ' đ' : ''}</div>
+                <div class="qty-group">
+                    <button class="qty-btn" type="button" onclick="event.stopPropagation(); changeQty(${idx}, -1)" ${dish.status === false ? 'disabled' : ''}>-</button>
+                    <input class="qty-input" type="number" min="1" value="1" id="qty-${idx}" ${dish.status === false ? 'disabled' : ''} onclick="event.stopPropagation();">
+                    <button class="qty-btn" type="button" onclick="event.stopPropagation(); changeQty(${idx}, 1)" ${dish.status === false ? 'disabled' : ''}>+</button>
+                </div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+    
+    // Đánh dấu card đã chọn
+    (window._selectedDishesIdxs || []).forEach(idx => {
+        const card = grid.querySelector(`.dish-card[data-idx='${idx}']`);
+        if (card) card.classList.add('selected');
+    });
+    
+    dishList.appendChild(grid);
+}
+function changeQty(idx, delta) {
+    const input = document.getElementById('qty-' + idx);
+    if (!input) return;
+    let val = parseInt(input.value) || 1;
+    val += delta;
+    if (val < 1) val = 1;
+    input.value = val;
+}
+document.getElementById('search-input').addEventListener('input', function(e) {
+    searchKeyword = e.target.value.trim().toLowerCase();
+    renderActiveFilters();
+    renderDishes(allDishes);
+});
+
+document.getElementById('sort-select').addEventListener('change', function(e) {
+    currentSort = e.target.value;
+    renderDishes(allDishes);
+});
+document.addEventListener('DOMContentLoaded', async () => {
+    // Kiểm tra và reset cart nếu table token thay đổi
+    await checkAndResetCartOnTokenChange();
+    
+    const dishes = await fetchDishes();
+    allDishes = dishes;
+    
+    // Render categories và dishes
+    renderMainCategories(dishes);
+    renderSubCategories(dishes);
+    renderActiveFilters();
+    renderDishes(dishes);
+    
+    lastDishesJson = JSON.stringify(dishes);
+    
+    // Auto refresh dishes data
+    setInterval(async () => {
+        const dishes = await fetchDishes();
+        const newJson = JSON.stringify(dishes);
+        if (newJson !== lastDishesJson) {
+            allDishes = dishes;
+            renderMainCategories(dishes);
+            renderSubCategories(dishes);
+            renderActiveFilters();
+            renderDishes(dishes);
+            lastDishesJson = newJson;
+        }
+    }, 1000);
+
+    // Hiển thị tip về tính năng microphone sau 2 giây
+    setTimeout(() => {
+        if (micBtn && micBtn.style.display !== 'none') {
+            const tipDiv = document.createElement('div');
+            tipDiv.className = 'alert alert-info alert-dismissible fade show';
+            tipDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10002; max-width: 90vw; text-align: center;';
+            tipDiv.innerHTML = `
+                💡 <strong>Mẹo sử dụng:</strong> Bạn có thể nhấn nút microphone 🎤 để tìm kiếm món ăn bằng giọng nói.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.body.appendChild(tipDiv);
+            
+            // Tự động ẩn sau 8 giây
+            setTimeout(() => {
+                if (tipDiv.parentNode) {
+                    tipDiv.remove();
+                }
+            }, 8000);
+        }
+    }, 2000);
+});
+window._selectedDishesIdxs = [];
+function toggleSelectDish(idx) {
+    if (window._currentRenderedDishes[idx].status === false) return;
+    const i = window._selectedDishesIdxs.indexOf(idx);
+    if (i === -1) window._selectedDishesIdxs.push(idx);
+    else window._selectedDishesIdxs.splice(i, 1);
+    renderDishes(allDishes);
+    updateOrderBtnPosition();
+}
+// Lấy table_id hoặc table_name từ URL và lưu vào localStorage
+function getTableIdFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('table_id') || params.get('table_name');
+}
+const tableId = getTableIdFromUrl();
+if (tableId) {
+    localStorage.setItem('table_id', tableId);
+}
+function getTableId() {
+    // Ưu tiên table_id từ server (khi truy cập qua token)
+    if (serverTableId) {
+        return serverTableId;
+    }
+    // Sau đó ưu tiên table_id hoặc table_name từ URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    let urlTableId = urlParams.get('table_id') || urlParams.get('table_name');
+    
+    // Ánh xạ table_id test thành table_id thực tế
+    if (urlTableId === 'test_table_123' || urlTableId === 'Bàn 1' || urlTableId === 'Ban 1') {
+        urlTableId = 'ce294822-b76d-49ff-aef7-2ca5d7d2e661'; // ID thực tế của Bàn 1
+    }
+    
+    if (urlTableId) {
+        return urlTableId;
+    }
+    // Cuối cùng mới từ localStorage
+    return localStorage.getItem('table_id') || '';
+}
+
+// Kiểm tra và reset giỏ hàng nếu table_token thay đổi
+async function checkAndResetCartOnTokenChange() {
+    const lastTableToken = localStorage.getItem('last_table_token');
+    
+    console.log('=== CART RESET CHECK ===');
+    console.log('Current tableToken:', tableToken);
+    console.log('Last tableToken:', lastTableToken);
+    console.log('serverTableId:', serverTableId);
+    
+    if (tableToken && lastTableToken && lastTableToken !== tableToken) {
+        console.log('🔄 Table token changed, clearing cart data...');
+        
+        // 1. Xóa localStorage liên quan đến giỏ hàng
+        localStorage.removeItem('table_id');
+        localStorage.removeItem('cart_data');
+        localStorage.removeItem('order_data');
+        localStorage.removeItem('selected_dishes');
+        
+        // 2. Clear chat history for old table
+        const oldTableId = getTableId(); // Might still return old ID
+        if (oldTableId) {
+            localStorage.removeItem(`chat_history_${oldTableId}`);
+            console.log('🗑️ Cleared chat history for old table:', oldTableId);
+        }
+        
+        // 3. Reset selected dishes UI
+        if (window._selectedDishesIdxs) {
+            window._selectedDishesIdxs = [];
+            console.log('Reset selected dishes array');
+        }
+        
+        // 4. Force clear UI
+        const orderBtn = document.getElementById('order-btn');
+        if (orderBtn) {
+            orderBtn.style.display = 'none';
+        }
+        
+        // 5. Clear server-side cart data by calling clear cart API
+        try {
+            const oldTableId = getTableId(); // Might still return old ID
+            console.log('Attempting to clear server cart for table:', oldTableId);
+            
+            const clearResponse = await fetch('/api/clear_cart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table_id: oldTableId })
+            });
+            
+            if (clearResponse.ok) {
+                console.log('✅ Server cart cleared successfully');
+            } else {
+                console.log('⚠️ Failed to clear server cart:', clearResponse.status);
+            }
+        } catch (error) {
+            console.error('❌ Error clearing server cart:', error);
+        }
+        
+        // 6. Force clear cart UI immediately
+        const cartBody = document.getElementById('cart-body');
+        if (cartBody) {
+            cartBody.innerHTML = `
+                <div class="text-center p-3"><em>Giỏ hàng trống</em></div>
+                <div class="alert alert-info text-end mb-0"><b>💰 Tổng hóa đơn (tất cả): 0 đ</b></div>
+            `;
+            console.log('🔄 Cleared cart UI immediately');
+        }
+        
+        // 7. Force refresh any open cart modal
+        const cartModal = document.getElementById('cartModal');
+        if (cartModal && cartModal.classList.contains('show')) {
+            console.log('🔄 Refreshing open cart modal...');
+            
+            // Close and reopen modal to force complete refresh
+            const modalInstance = bootstrap.Modal.getInstance(cartModal);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+            
+            // Wait for modal to close, then reopen with fresh data
+            setTimeout(async () => {
+                await loadAndShowCartModal();
+            }, 300);
+        }
+        
+        // 8. Clear any cart polling intervals to prevent old data
+        if (window.cartPollingInterval) {
+            clearInterval(window.cartPollingInterval);
+            window.cartPollingInterval = null;
+            console.log('🔄 Cleared cart polling interval');
+        }
+        
+        // 9. Clear chatbot iframe to force reload with new table_id
+        const chatbotIframe = document.getElementById('chatbot-iframe');
+        if (chatbotIframe) {
+            chatbotIframe.src = 'about:blank'; // Clear current content
+            console.log('🔄 Cleared chatbot iframe');
+        }
+        
+        console.log('✅ Cart reset completed');
+    } else if (!lastTableToken && tableToken) {
+        console.log('📝 First time setting table token');
+    } else if (tableToken === lastTableToken) {
+        console.log('✅ Table token unchanged');
+    } else {
+        console.log('⚠️ No valid token comparison');
+    }
+    
+    // Lưu table_token hiện tại
+    if (tableToken) {
+        localStorage.setItem('last_table_token', tableToken);
+        console.log('💾 Saved current token to localStorage');
+    }
+}
+
+// Debug function để kiểm tra table status manually
+async function debugTableStatus() {
+    console.log('=== DEBUG TABLE STATUS ===');
+    console.log('tableToken:', tableToken);
+    console.log('serverTableId:', serverTableId);
+    
+    if (tableToken) {
+        try {
+            const response = await fetch(`/api/table/status/${tableToken}`);
+            console.log('Response status:', response.status);
+            
+            if (response.ok) {
+                const status = await response.json();
+                console.log('Table status response:', status);
+            } else {
+                console.log('Error response:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error in debug:', error);
+        }
+    } else {
+        console.log('No tableToken available');
+    }
+}
+// Gửi order
+document.getElementById('order-btn').onclick = async function() {
+    const selected = [];
+    (window._selectedDishesIdxs || []).forEach(idx => {
+        const dish = window._currentRenderedDishes[idx];
+        const qty = document.getElementById('qty-' + idx) ? parseInt(document.getElementById('qty-' + idx).value) || 1 : 1;
+        selected.push({ name: dish.name, quantity: qty });
+    });
+    if (selected.length === 0) {
+        alert('Vui lòng chọn ít nhất một món!');
+        return;
+    }
+    
+    const orderTableId = getTableId();
+    console.log('=== ORDER DEBUG ===');
+    console.log('Order tableId:', orderTableId);
+    console.log('serverTableId:', serverTableId);
+    console.log('tableToken:', tableToken);
+    console.log('Selected items:', selected);
+    
+    const res = await fetch('/api/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: selected, table_id: orderTableId })
+    });
+    if (res.ok) {
+        console.log('✅ Order sent successfully with table_id:', orderTableId);
+        alert('Đã thêm vào hóa đơn! Bạn có thể mở chatbot để chat hoặc xem hóa đơn.');
+        window._selectedDishesIdxs = [];
+        renderDishes(allDishes);
+    } else {
+        console.error('❌ Order failed:', res.status);
+        alert('Có lỗi khi gửi order!');
+    }
+};
+document.getElementById('chatbotModal').addEventListener('hidden.bs.modal', function () {
+    updateOrderBtnPosition(); // Hiện lại nút nếu có món được chọn
+});
+let cartPollingInterval = null;
+document.getElementById('open-cart-btn').onclick = async function() {
+    await loadAndShowCartModal();
+};
+async function loadAndShowCartModal() {
+    const res = await fetch('/api/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table_id: getTableId() })
+    });
+    const data = await res.json();
+    renderCart(data);
+    var modal = new bootstrap.Modal(document.getElementById('cartModal'));
+    modal.show();
+    if (cartPollingInterval) clearInterval(cartPollingInterval);
+    cartPollingInterval = setInterval(async () => {
+        if (!document.getElementById('cartModal').classList.contains('show')) {
+            clearInterval(cartPollingInterval);
+            cartPollingInterval = null;
+            return;
+        }
+        const res = await fetch('/api/cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table_id: getTableId() })
+        });
+        const data = await res.json();
+        renderCart(data);
+    }, 3000);
+}
+document.getElementById('cartModal').addEventListener('hidden.bs.modal', function () {
+    if (cartPollingInterval) clearInterval(cartPollingInterval);
+    cartPollingInterval = null;
+});
+let lastOrderStatusMap = {};
+function renderCart(cartData) {
+    if (document.activeElement && document.activeElement.classList.contains('note-input-focus')) {
+        return;
+    }
+    const cartBody = document.getElementById('cart-body');
+    const orders = cartData.orders || [];
+    
+    // Filter out empty orders (orders with no items)
+    const nonEmptyOrders = orders.filter(order => order.items && order.items.length > 0);
+    
+    let qrJustPaid = false;
+    nonEmptyOrders.forEach(cart => {
+        const prevStatus = lastOrderStatusMap[cart.order_id];
+        if ((cart.status === 'paid' || cart.status === 'Đã thanh toán') && prevStatus && prevStatus !== 'paid' && prevStatus !== 'Đã thanh toán') {
+            const qrModal = document.getElementById('qrModal');
+            if (qrModal) {
+                const isOpen = qrModal.classList.contains('show') || qrModal.getAttribute('aria-modal') === 'true' || qrModal.style.display === 'block';
+                if (isOpen) {
+                    let modal = bootstrap.Modal.getInstance(qrModal);
+                    if (!modal) modal = new bootstrap.Modal(qrModal);
+                    modal.hide();
+                    qrJustPaid = true;
+                }
+            }
+        }
+    });
+    nonEmptyOrders.forEach(cart => {
+        lastOrderStatusMap[cart.order_id] = cart.status;
+    });
+    
+    if (!nonEmptyOrders.length) {
+        cartBody.innerHTML = '<div class="p-4 text-center text-muted">Bạn chưa có hóa đơn nào.</div>';
+        return;
+    }
+    
+    let html = '';
+    let totalAll = 0;
+    nonEmptyOrders.forEach((cart, idx) => {
+        html += `<div class='card mb-4 shadow-sm'>`;
+        html += `<div class='card-header d-flex justify-content-between align-items-center'>`;
+        html += `<span><b>Hóa đơn #${idx + 1}</b> (${cart.created_at || ''})</span>`;
+        html += `<span class='badge bg-${getStatusColor(cart.status)}'>${getStatusText(cart.status)}</span>`;
+        html += `</div><div class='card-body p-0'>`;
+        html += '<table class="table table-bordered mb-0"><thead><tr><th>Món</th><th>SL</th><th>Giá</th><th>Thành tiền</th><th>Ghi chú</th><th></th></tr></thead><tbody>';
+        cart.items.forEach(item => {
+            html += `<tr><td>${item.dish}</td><td>${item.quantity}</td><td>${item.unit_price ? item.unit_price.toLocaleString() + ' đ' : ''}</td><td><b>${item.amount.toLocaleString()} đ</b></td>`;
+            html += '<td>';
+            if (!cart.status || cart.status === 'pending') {
+                html += `<input type='text' class='form-control form-control-sm note-input-focus' style='min-width:90px;max-width:180px;display:inline-block' value="${item.note ? item.note.replace(/"/g, '&quot;') : ''}" onfocus="this.classList.add('note-input-focus')" onblur="this.classList.remove('note-input-focus'); updateNote('${cart.order_id}','${item.dish.replace(/'/g, '\&#39;').replace(/"/g, '&quot;')}', this.value)" placeholder='Ghi chú...'>`;
+            } else {
+                html += `<span>${item.note || ''}</span>`;
+            }
+            html += '</td>';
+            html += '<td>';
+            if (!cart.status || cart.status === 'pending') {
+                html += `<button class='btn btn-sm btn-danger' onclick='removeCartItem("${cart.order_id}", "${item.dish.replace(/"/g, '&quot;')}")'><i class="fas fa-trash"></i></button>`;
+            }
+            html += `</td></tr>`;
+        });
+        html += '</tbody></table>';
+        html += `<div class="p-3 text-end"><b>Tổng cộng: ${cart.total ? cart.total.toLocaleString() : 0} đ</b></div>`;
+        totalAll += cart.total || 0;
+        if (cart.status === 'confirmed') {
+            html += `<div class='alert alert-success m-3 text-center'>Đơn hàng đã được gửi cho nhà hàng. Đang chờ bếp xác nhận!</div>`;
+            html += `<div class='text-center mb-3'><button class='btn btn-success' disabled>Đã gửi nhà hàng</button></div>`;
+        } else if (cart.status === 'in_progress') {
+            html += `<div class='alert alert-info m-3 text-center'>Nhà hàng đã xác nhận món ăn, bạn chờ trong giây lát nhé!</div>`;
+            html += `<div class='text-center mb-3'><button class='btn btn-info' disabled>Đang làm món</button></div>`;
+        } else if (cart.status === 'done') {
+            html += `<div class='alert alert-primary m-3 text-center'>Món ăn đã hoàn thành! Chúc bạn ngon miệng.</div>`;
+            html += `<div class='text-center mb-3'><button class='btn btn-primary' disabled>Đã xong</button></div>`;
+        } else if (cart.status === 'paid' || cart.status === 'Đã thanh toán') {
+            html += `<div class='alert alert-success m-3 text-center'><b>Nhà hàng đã xác nhận chuyển khoản thành công! Cảm ơn bạn.</b></div>`;
+            html += `<div class='text-center mb-3'><button class='btn btn-success' disabled>Đã thanh toán</button></div>`;
+        } else {
+            html += `<div class='text-center mb-3'><button class='btn btn-success' onclick='confirmCart("${cart.order_id}")'>Xác nhận gửi món cho nhà hàng</button></div>`;
+        }
+        html += `</div></div>`;
+    });
+    html += `<div class="alert alert-info text-end mb-0"><b>💰 Tổng hóa đơn (tất cả): ${totalAll.toLocaleString()} đ</b></div>`;
+    cartBody.innerHTML = html;
+    if (qrJustPaid) {
+        setTimeout(() => { alert('Nhà hàng đã xác nhận chuyển khoản thành công!'); }, 300);
+    }
+}function getStatusColor(status) {
+    if (status === 'confirmed') return 'success';
+    if (status === 'in_progress') return 'info';
+    if (status === 'done') return 'primary';
+    if (status === 'paid' || status === 'Đã thanh toán') return 'danger';
+    return 'secondary';
+}function getStatusText(status) {
+    if (status === 'confirmed') return 'Đã gửi bếp';
+    if (status === 'in_progress') return 'Đang làm';
+    if (status === 'done') return 'Đã xong';
+    if (status === 'paid' || status === 'Đã thanh toán') return 'Đã thanh toán';
+    return 'Chưa chốt';
+}
+async function removeCartItem(orderId, dishName) {
+    if (!confirm('Bạn chắc chắn muốn xóa món này khỏi hóa đơn?')) return;
+    const res = await fetch('/api/cart/remove_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dish_name: dishName, order_id: orderId, table_id: getTableId() })
+    });
+    if (res.ok) {
+        const cartRes = await fetch('/api/cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table_id: getTableId() })
+        });
+        const cartData = await cartRes.json();
+        renderCart(cartData);
+    } else {
+        alert('Có lỗi khi xóa món!');
+    }
+}
+async function confirmCart(orderId) {
+    if (!confirm('Bạn chắc chắn muốn gửi đơn này cho nhà hàng? Sau khi xác nhận sẽ không thể sửa/xóa món!')) return;
+    const res = await fetch('/api/cart/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, table_id: getTableId() })
+    });
+    if (res.ok) {
+        alert('Đã gửi đơn cho nhà hàng!');
+        const cartRes = await fetch('/api/cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table_id: getTableId() })
+        });
+        const cartData = await cartRes.json();
+        renderCart(cartData);
+    } else {
+        alert('Có lỗi khi xác nhận đơn!');
+    }
+}
+async function updateNote(orderId, dishName, note) {
+    const res = await fetch('/api/cart/update_note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, dish_name: dishName, note: note, table_id: getTableId() })
+    });
+    if (!res.ok) {
+        alert('Có lỗi khi lưu ghi chú!');
+    }
+}
+(function addPayQRButton() {
+    const cartModalFooter = document.querySelector('#cartModal .modal-footer');
+    if (cartModalFooter && !document.getElementById('pay-qr-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-warning';
+        btn.id = 'pay-qr-btn';
+        btn.innerHTML = '<i class="fas fa-qrcode"></i> Thanh toán chuyển khoản';
+        btn.onclick = showQRModal;
+        cartModalFooter.insertBefore(btn, cartModalFooter.firstChild);
+    }
+})();
+async function showQRModal() {
+    const qrBody = document.getElementById('qr-modal-body');
+    qrBody.innerHTML = '<div class="text-center text-muted">Đang lấy mã QR...</div>';
+    var modal = new bootstrap.Modal(document.getElementById('qrModal'));
+    modal.show();
+    try {
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: 'chuyển khoản', table_id: getTableId() })
+        });
+        const data = await res.json();
+        qrBody.innerHTML = data.response || '<div class="text-danger">Không lấy được mã QR!</div>';
+        // Thêm nút tải QR nếu có ảnh QR
+        setTimeout(() => {
+            const img = qrBody.querySelector('img');
+            if (img) {
+                // Tạo container flex cho ảnh và nút
+                let flexDiv = document.createElement('div');
+                flexDiv.style.display = 'flex';
+                flexDiv.style.alignItems = 'center';
+                flexDiv.style.justifyContent = 'center';
+                flexDiv.style.gap = '16px';
+                // Di chuyển ảnh vào container
+                img.parentNode.insertBefore(flexDiv, img);
+                flexDiv.appendChild(img);
+                // Tạo nút tải
+                let downloadBtn = document.createElement('button');
+                downloadBtn.className = 'btn btn-outline-primary';
+                downloadBtn.innerHTML = '<i class="fas fa-download"></i> Tải mã QR';
+                downloadBtn.onclick = async function() {
+                    try {
+                        const response = await fetch(img.src, {mode: 'cors'});
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = 'qr-code.png';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                    } catch (e) {
+                        alert('Không thể tải ảnh QR. Bạn có thể nhấn giữ vào ảnh để lưu về máy!');
+                    }
+                };
+                flexDiv.appendChild(downloadBtn);
+            }
+        }, 100);
+    } catch (e) {
+        qrBody.innerHTML = '<div class="text-danger">Có lỗi khi lấy mã QR!</div>';
+    }
+}
+const style = document.createElement('style');
+style.innerHTML = `
+#order-btn.fixed-order-btn {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 9999;
+  width: 90vw;
+  max-width: 420px;
+  box-shadow: 0 4px 24px #007bff33;
+  display: block;
+}
+@media (max-width: 600px) {
+  #order-btn.fixed-order-btn {
+    width: 96vw;
+    max-width: 98vw;
+    font-size: 1.1rem;
+    padding: 12px 0;
+  }
+}`;
+document.head.appendChild(style);
+function updateOrderBtnPosition() {
+    const btn = document.getElementById('order-btn');
+    const anyChecked = (window._selectedDishesIdxs || []).length > 0;
+    if (anyChecked) {
+        btn.classList.add('fixed-order-btn');
+        btn.style.display = 'block';
+    } else {
+        btn.classList.remove('fixed-order-btn');
+        btn.style.display = '';
+    }
+}
+const origRenderDishes = renderDishes;
+renderDishes = function() {
+    origRenderDishes.apply(this, arguments);
+    setTimeout(() => {
+        document.querySelectorAll('.select-checkbox').forEach(cb => {
+            cb.removeEventListener('change', updateOrderBtnPosition);
+            cb.addEventListener('change', updateOrderBtnPosition);
+        });
+        updateOrderBtnPosition();
+    }, 0);
+};
+document.getElementById('taskbar-cart-btn').onclick = async function() {
+    await loadAndShowCartModal();
+};
+document.getElementById('taskbar-chatbot-btn').onclick = function() {
+    var modal = new bootstrap.Modal(document.getElementById('chatbotModal'));
+    // Chỉ cập nhật iframe src lần đầu tiên hoặc khi table_id thay đổi
+    const tableId = getTableId();
+    console.log('=== CHATBOT DEBUG ===');
+    console.log('tableId for chatbot:', tableId);
+    console.log('serverTableId:', serverTableId);
+    console.log('tableToken:', tableToken);
+    
+    const chatbotIframe = document.getElementById('chatbot-iframe');
+    const currentSrc = chatbotIframe.src;
+    
+    // Kiểm tra nếu iframe chưa được load hoặc table_id đã thay đổi
+    if (!currentSrc || !currentSrc.includes('/chatbot-popup') || !currentSrc.includes(`table_id=${tableId}`)) {
+        const chatbotUrl = `/chatbot-popup?table_id=${tableId}`;
+        console.log('Loading chatbot with URL:', chatbotUrl);
+        
+        // Clear any existing chat history for different table before loading new one
+        if (currentSrc && currentSrc.includes('/chatbot-popup')) {
+            const urlParams = new URLSearchParams(currentSrc.split('?')[1]);
+            const oldTableId = urlParams.get('table_id');
+            if (oldTableId && oldTableId !== tableId) {
+                localStorage.removeItem(`chat_history_${oldTableId}`);
+                console.log('🗑️ Cleared old chat history for table:', oldTableId);
+            }
+        }
+        
+        chatbotIframe.src = chatbotUrl;
+    } else {
+        console.log('Chatbot iframe already loaded for table:', tableId);
+    }
+    
+    modal.show();
+    // Ẩn taskbar khi mở chatbot
+    const mobileTaskbar = document.getElementById('mobile-taskbar');
+    if (mobileTaskbar) mobileTaskbar.style.display = 'none';
+};
+document.getElementById('chatbotModal').addEventListener('hidden.bs.modal', function () {
+    // Hiện lại taskbar khi đóng chatbot
+    const mobileTaskbar = document.getElementById('mobile-taskbar');
+    if (mobileTaskbar) mobileTaskbar.style.display = 'flex';
+});
+document.getElementById('taskbar-order-btn').onclick = async function() {
+    const selected = [];
+    (window._selectedDishesIdxs || []).forEach(idx => {
+        const dish = window._currentRenderedDishes[idx];
+        const qty = document.getElementById('qty-' + idx) ? parseInt(document.getElementById('qty-' + idx).value) || 1 : 1;
+        selected.push({ name: dish.name, quantity: qty });
+    });
+    if (selected.length === 0) {
+        alert('Vui lòng chọn ít nhất một món!');
+        return;
+    }
+    const res = await fetch('/api/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: selected, table_id: getTableId() })
+    });
+    if (res.ok) {
+        alert('Đã thêm vào hóa đơn! Bạn có thể mở chatbot để chat hoặc xem hóa đơn.');
+        window._selectedDishesIdxs = [];
+        renderDishes(allDishes);
+    } else {
+        alert('Có lỗi khi gửi order!');
+    }
+};
+// Ẩn/hiện nút order trên taskbar tuỳ món được chọn
+function updateOrderBtnPosition() {
+    const btn = document.getElementById('taskbar-order-btn');
+    const anyChecked = (window._selectedDishesIdxs || []).length > 0;
+    btn.style.visibility = anyChecked ? 'visible' : 'hidden';
+}
+// Ẩn taskbar khi mở giỏ hàng, hiện lại khi đóng giỏ hàng
+const mobileTaskbar = document.getElementById('mobile-taskbar');
+document.getElementById('cartModal').addEventListener('show.bs.modal', function () {
+    if (mobileTaskbar) mobileTaskbar.style.display = 'none';
+});
+document.getElementById('cartModal').addEventListener('hidden.bs.modal', function () {
+    if (mobileTaskbar) mobileTaskbar.style.display = 'flex';
+});
+document.getElementById('taskbar-staff-btn').onclick = async function() {
+    if (!confirm('Bạn chắc chắn muốn gọi nhân viên không?')) return;
+    const tableId = getTableId();
+    const res = await fetch('/api/call_staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table_id: tableId })
+    });
+    if (res.ok) {
+        alert('Đã gửi yêu cầu gọi nhân viên! Nhân viên sẽ đến hỗ trợ bạn trong giây lát.');
+    } else {
+        alert('Có lỗi khi gửi yêu cầu gọi nhân viên!');
+    }
+};
+
+// --- Chức năng Microphone ---
+let recognizing = false;
+let recognition;
+const micBtn = document.getElementById('mic-btn');
+const listeningIndicator = document.getElementById('listening-indicator');
+const searchInput = document.getElementById('search-input');
+
+function showListeningIndicator() {
+    listeningIndicator.classList.add('show');
+}
+
+function hideListeningIndicator() {
+    listeningIndicator.classList.remove('show');
+}
+
+function updateMicState(state) {
+    micBtn.classList.remove('active', 'recording');
+    if (state === 'listening') {
+        micBtn.classList.add('active');
+    } else if (state === 'recording') {
+        micBtn.classList.add('recording');
+    }
+}
+
+// Khởi tạo Web Speech API
+if ('webkitSpeechRecognition' in window) {
+    recognition = new webkitSpeechRecognition();
+    recognition.lang = 'vi-VN';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = function() {
+        recognizing = true;
+        updateMicState('recording');
+        showListeningIndicator();
+        console.log('Bắt đầu nhận diện giọng nói...');
+    };
+
+    recognition.onend = function() {
+        recognizing = false;
+        updateMicState('idle');
+        hideListeningIndicator();
+        console.log('Kết thúc nhận diện giọng nói.');
+    };
+
+    recognition.onresult = function(event) {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript;
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+
+        if (finalTranscript) {
+            searchInput.value = finalTranscript;
+            searchInput.dispatchEvent(new Event('input'));
+            console.log('Kết quả cuối cùng:', finalTranscript);
+        } else if (interimTranscript) {
+            searchInput.value = interimTranscript;
+            console.log('Kết quả tạm thời:', interimTranscript);
+        }
+    };
+
+    recognition.onerror = function(event) {
+        console.error('Lỗi nhận diện giọng nói:', event.error);
+        let errorMessage = '';
+        switch(event.error) {
+            case 'no-speech':
+                errorMessage = 'Không nghe thấy giọng nói. Vui lòng nói rõ ràng hơn.';
+                break;
+            case 'audio-capture':
+                errorMessage = 'Không thể truy cập microphone. Vui lòng kiểm tra kết nối.';
+                break;
+            case 'not-allowed':
+                errorMessage = 'Quyền truy cập microphone bị từ chối. Vui lòng cấp quyền trong trình duyệt.';
+                break;
+            case 'network':
+                errorMessage = 'Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet.';
+                break;
+            default:
+                errorMessage = 'Có lỗi xảy ra khi nhận diện giọng nói. Vui lòng thử lại.';
+        }
+        alert(errorMessage);
+    };
+
+    recognition.onaudiostart = function() {
+        console.log('Bắt đầu ghi âm...');
+    };
+
+    recognition.onaudioend = function() {
+        console.log('Kết thúc ghi âm.');
+    };
+
+    recognition.onsoundstart = function() {
+        console.log('Bắt đầu phát hiện âm thanh...');
+    };
+
+    recognition.onsoundend = function() {
+        console.log('Kết thúc phát hiện âm thanh.');
+    };
+
+    recognition.onspeechstart = function() {
+        console.log('Bắt đầu phát hiện giọng nói...');
+    };
+
+    recognition.onspeechend = function() {
+        console.log('Kết thúc phát hiện giọng nói.');
+    };
+
+    // Xử lý sự kiện click microphone
+    micBtn.onclick = function(e) {
+        e.preventDefault();
+        if (recognizing) {
+            recognition.stop();
+        } else {
+            if (navigator.permissions) {
+                navigator.permissions.query({name: 'microphone'}).then(function(result) {
+                    if (result.state === 'granted' || result.state === 'prompt') {
+                        recognition.start();
+                    } else {
+                        alert('❌ **Quyền truy cập microphone:** Vui lòng cấp quyền truy cập microphone để sử dụng tính năng này. Bạn có thể nhấn vào biểu tượng khóa trong thanh địa chỉ trình duyệt.');
+                    }
+                });
+            } else {
+                recognition.start();
+            }
+        }
+    };
+
+    // Phím tắt: Space để bật/tắt microphone - ĐÃ TẮT
+    // document.addEventListener('keydown', function(e) {
+    //     if (e.code === 'Space' && e.target === searchInput && !e.shiftKey) {
+    //         e.preventDefault();
+    //         if (isRecording) {
+    //             stopRecording();
+    //         } else {
+    //             startRecording();
+    //         }
+    //     }
+    // });
+
+} else {
+    console.log('Trình duyệt không hỗ trợ Web Speech API');
+    micBtn.style.display = 'none';
+}
+
+    // --- Chức năng Text-to-Speech (Bot trả lời bằng giọng nói) ---
+    let speechSynthesis = window.speechSynthesis;
+    let speaking = false;
+    let currentUtterance = null;
+
+    // Hàm để bot trả lời bằng giọng nói
+    function speakText(text, lang = 'vi-VN') {
+        if (speaking && currentUtterance) {
+            speechSynthesis.cancel(); // Dừng phát âm hiện tại
+        }
+
+        // Làm sạch text trước khi đọc (loại bỏ HTML tags nếu có)
+        let cleanText = text;
+        if (typeof text === 'string') {
+            // Loại bỏ HTML tags
+            cleanText = text.replace(/<[^>]+>/g, '');
+            // Loại bỏ HTML entities
+            cleanText = cleanText.replace(/&nbsp;/g, ' ')
+                               .replace(/&amp;/g, '&')
+                               .replace(/&lt;/g, '<')
+                               .replace(/&gt;/g, '>')
+                               .replace(/&quot;/g, '"')
+                               .replace(/&#39;/g, "'");
+            // Loại bỏ emojis và ký tự đặc biệt
+            cleanText = cleanText.replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
+                               .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Misc Symbols
+                               .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport
+                               .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '') // Regional
+                               .replace(/[\u{1F900}-\u{1F9FF}]/gu, '') // Supplemental
+                               .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '') // Extended-A
+                               .replace(/[•·▪▫‣⁃◦‣⁌⁍]/g, '') // Bullet points
+                               .replace(/[→←↑↓⇒⇐⇑⇓]/g, '') // Arrows
+                               .replace(/[★☆✭✮✯✰]/g, '') // Stars
+                               .replace(/[♥♦♣♠]/g, ''); // Card suits
+            // Loại bỏ khoảng trắng thừa
+            cleanText = cleanText.replace(/\s+/g, ' ').trim();
+        }
+
+        // Tạo utterance mới
+        currentUtterance = new SpeechSynthesisUtterance(cleanText);
+        currentUtterance.lang = lang;
+        currentUtterance.rate = 0.9; // Tốc độ nói (0.8-1.2)
+        currentUtterance.pitch = 1.0; // Cao độ
+        currentUtterance.volume = 1.0; // Âm lượng
+
+        // Xử lý sự kiện
+        currentUtterance.onstart = function() {
+            speaking = true;
+            console.log('Bắt đầu phát âm:', cleanText);
+        };
+
+        currentUtterance.onend = function() {
+            speaking = false;
+            console.log('Kết thúc phát âm');
+        };
+
+        currentUtterance.onerror = function(event) {
+            speaking = false;
+            console.error('Lỗi phát âm:', event.error);
+        };
+
+        // Bắt đầu phát âm
+        speechSynthesis.speak(currentUtterance);
+    }
+
+    // Hàm dừng phát âm
+    function stopSpeaking() {
+        if (speaking && currentUtterance) {
+            speechSynthesis.cancel();
+            speaking = false;
+        }
+    }
+
+    // Tự động phát âm tin nhắn bot mới (có thể tắt/bật)
+    let autoSpeak = true; // Mặc định bật
+
+    // Khôi phục trạng thái từ localStorage
+    const savedAutoSpeak = localStorage.getItem('autoSpeak');
+    if (savedAutoSpeak !== null) {
+        autoSpeak = savedAutoSpeak === 'true';
+        document.getElementById('auto-speak-toggle').checked = autoSpeak;
+    }
+
+    // Xử lý sự kiện thay đổi checkbox
+    document.getElementById('auto-speak-toggle').addEventListener('change', function() {
+        autoSpeak = this.checked;
+        localStorage.setItem('autoSpeak', autoSpeak);
+    });
+
+    // Hàm để đọc thông báo khi có sự kiện quan trọng
+    function speakNotification(message) {
+        if (autoSpeak && message) {
+            setTimeout(() => {
+                speakText(message);
+            }, 500);
+        }
+    }
+
+    // Thêm phím tắt để dừng phát âm (phím Escape)
+    document.addEventListener('keydown', function(e) {
+        if (e.code === 'Escape') {
+            stopSpeaking();
+        }
+    });
+
+    // Đọc thông báo khi có sự kiện quan trọng
+    // Khi chọn món ăn
+    function addDishSelectionNotification(dishName) {
+        speakNotification(`Đã chọn ${dishName}`);
+    }
+
+    // Khi bỏ chọn món ăn
+    function removeDishSelectionNotification(dishName) {
+        speakNotification(`Đã bỏ chọn ${dishName}`);
+    }
+
+    // Khi thay đổi số lượng
+    function changeQuantityNotification(dishName, quantity) {
+        speakNotification(`Đã thay đổi số lượng ${dishName} thành ${quantity}`);
+    }
+
+    // Đọc thông báo khi gửi order
+    const orderBtn = document.getElementById('order-btn');
+    if (orderBtn) {
+        orderBtn.addEventListener('click', function() {
+            speakNotification('Đang gửi đơn hàng của bạn');
+        });
+    }
+
+    // Đọc thông báo khi gọi nhân viên
+    const staffBtn = document.getElementById('taskbar-staff-btn');
+    if (staffBtn) {
+        staffBtn.addEventListener('click', function() {
+            speakNotification('Đang gọi nhân viên phục vụ');
+        });
+    }
+
+    // Đọc thông báo khi mở giỏ hàng
+    const cartBtn = document.getElementById('taskbar-cart-btn');
+    if (cartBtn) {
+        cartBtn.addEventListener('click', function() {
+            speakNotification('Mở giỏ hàng');
+        });
+    }
+
+    // Đọc thông báo khi mở chatbot
+    const chatbotBtn = document.getElementById('taskbar-chatbot-btn');
+    if (chatbotBtn) {
+        chatbotBtn.addEventListener('click', function() {
+            speakNotification('Mở chatbot hỗ trợ');
+        });
+    }
+
+    // Xử lý table_id hoặc table_name từ URL và cập nhật thông tin bàn
+    function handleTableInfo() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tableId = urlParams.get('table_id') || urlParams.get('table_name');
+        
+        if (tableId) {
+            // Cập nhật thông tin bàn
+            const tableInfoElement = document.getElementById('tableInfo');
+            if (tableInfoElement) {
+                tableInfoElement.innerHTML = `Bàn ${tableId} - Chọn món, tick vào món để chọn và nhấn "Gửi order"!`;
+            }
+            
+            // Cập nhật user_id để sử dụng cho order
+            window.currentTableId = tableId;
+            
+            // Thông báo chào mừng theo bàn
+            setTimeout(() => {
+                speakNotification(`Chào mừng bạn đến với bàn ${tableId}. Bạn có thể chọn món ăn và sử dụng microphone để tìm kiếm món ăn.`);
+            }, 2000);
+        } else {
+            // Nếu không có table_id, sử dụng thông báo mặc định
+            setTimeout(() => {
+                speakNotification('Chào mừng bạn đến với menu nhà hàng. Bạn có thể sử dụng microphone để tìm kiếm món ăn và tôi sẽ đọc thông báo cho bạn.');
+            }, 2000);
+        }
+    }
+
+    // Gọi hàm xử lý thông tin bàn khi trang load
+    handleTableInfo();
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
+

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quét QR Code - Nhà hàng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container { padding-top: 20px; }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.95);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            border: none;
+            padding: 20px;
+        }
+        .scanner-container {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .scanner-container img {
+            max-width: 200px;
+            border-radius: 10px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            margin: 20px 0;
+        }
+        .btn-scan {
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            font-size: 1.1rem;
+        }
+        .btn-scan:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            color: white;
+        }
+        .loading {
+            display: none;
+            color: #007bff;
+            font-size: 1.2rem;
+            margin: 20px 0;
+        }
+        .error-message {
+            display: none;
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .success-message {
+            display: none;
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .manual-input {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .manual-input input {
+            border-radius: 20px;
+            border: 2px solid #e9ecef;
+            padding: 12px 20px;
+            font-size: 1rem;
+        }
+        .manual-input input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        .manual-input button {
+            border-radius: 20px;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            border: none;
+            color: white;
+            font-weight: 600;
+        }
+        .manual-input button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h1 class="mb-0">
+                            <i class="fas fa-qrcode me-3"></i>
+                            Quét QR Code
+                        </h1>
+                        <p class="mb-0 mt-2 opacity-75">Quét mã QR để truy cập menu nhà hàng</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scanner -->
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="scanner-container">
+                            <h4><i class="fas fa-camera me-2"></i>Quét QR Code</h4>
+                            <p class="text-muted">Nhấn nút bên dưới để quét mã QR trên bàn</p>
+                            
+                            <button class="btn-scan" onclick="startQRScan()">
+                                <i class="fas fa-qrcode"></i>
+                                Bắt đầu quét QR
+                            </button>
+                            
+                            <div class="loading" id="loading">
+                                <i class="fas fa-spinner fa-spin me-2"></i>
+                                Đang quét QR code...
+                            </div>
+                            
+                            <div class="error-message" id="error-message"></div>
+                            <div class="success-message" id="success-message"></div>
+                        </div>
+                        
+                        <!-- Manual Input -->
+                        <div class="manual-input">
+                            <h5><i class="fas fa-keyboard me-2"></i>Nhập tên bàn thủ công</h5>
+                            <p class="text-muted">Nếu không thể quét QR, bạn có thể nhập tên bàn trực tiếp</p>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <input type="text" class="form-control" id="manual-table-id" 
+                                           placeholder="Nhập tên bàn (ví dụ: Bàn 1, Bàn 2)">
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn w-100" onclick="goToTable()">
+                                        <i class="fas fa-arrow-right"></i> Vào bàn
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Demo Tables -->
+                        <div class="text-center mt-4">
+                            <h6 class="text-muted mb-3">Bàn demo để test:</h6>
+                            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                <button class="btn btn-outline-primary btn-sm" onclick="goToTable('Bàn 1')">
+                                    <i class="fas fa-table me-1"></i>Bàn 1
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" onclick="goToTable('Bàn 2')">
+                                    <i class="fas fa-table me-1"></i>Bàn 2
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" onclick="goToTable('Bàn 3')">
+                                    <i class="fas fa-table me-1"></i>Bàn 3
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Simulate QR code scanning
+        function startQRScan() {
+            const loading = document.getElementById('loading');
+            const errorMessage = document.getElementById('error-message');
+            const successMessage = document.getElementById('success-message');
+            
+            // Hide previous messages
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+            
+            // Show loading
+            loading.style.display = 'block';
+            
+            // Simulate scanning process
+            setTimeout(() => {
+                loading.style.display = 'none';
+                
+                // Simulate successful scan with demo data - sử dụng URL trực tiếp
+                const demoQRData = "http://192.168.1.112:5000/mobile_menu?table_name=Bàn 1";
+                
+                // Process the QR data
+                processQRData(demoQRData);
+            }, 2000);
+        }
+        
+        // Process QR code data
+        async function processQRData(qrData) {
+            try {
+                // Kiểm tra xem qrData có phải là URL không
+                if (qrData.startsWith('http://') || qrData.startsWith('https://')) {
+                    // Nếu là URL, chuyển hướng trực tiếp
+                    const successMessage = document.getElementById('success-message');
+                    successMessage.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Quét thành công!</strong> Đang chuyển hướng đến menu...
+                    `;
+                    successMessage.style.display = 'block';
+                    
+                    // Redirect after 1 second
+                    setTimeout(() => {
+                        window.location.href = qrData;
+                    }, 1000);
+                    return;
+                }
+                
+                // Nếu không phải URL, xử lý như cũ
+                const response = await fetch('/api/qr/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        qr_data: qrData
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.url) {
+                    // Show success message
+                    const successMessage = document.getElementById('success-message');
+                    successMessage.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Quét thành công!</strong> Đang chuyển hướng đến ${result.table.name}...
+                    `;
+                    successMessage.style.display = 'block';
+                    
+                    // Redirect after 1 second
+                    setTimeout(() => {
+                        window.location.href = result.url;
+                    }, 1000);
+                } else {
+                    // Show error message
+                    const errorMessage = document.getElementById('error-message');
+                    errorMessage.innerHTML = `
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Lỗi:</strong> ${result.error || 'Không thể xử lý QR code'}
+                    `;
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error processing QR:', error);
+                const errorMessage = document.getElementById('error-message');
+                errorMessage.innerHTML = `
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Lỗi:</strong> Không thể kết nối đến server
+                `;
+                errorMessage.style.display = 'block';
+            }
+        }
+        
+        // Go to table manually
+        function goToTable(tableName = null) {
+            if (!tableName) {
+                tableName = document.getElementById('manual-table-id').value.trim();
+            }
+            
+            if (!tableName) {
+                alert('Vui lòng nhập tên bàn!');
+                return;
+            }
+            
+            // Redirect to mobile menu with table name
+            window.location.href = `/mobile_menu?table_name=${tableName}`;
+        }
+        
+        // Handle Enter key in manual input
+        document.getElementById('manual-table-id').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                goToTable();
+            }
+        });
+        
+        // Auto-focus on manual input
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('manual-table-id').focus();
+        });
+    </script>
+</body>
+</html>

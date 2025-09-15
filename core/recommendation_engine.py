@@ -147,11 +147,12 @@ class SmartRecommendationEngine:
             if spicy_reason:
                 reasons.append(spicy_reason)
         
-        # Điểm cho nguyên liệu yêu thích
+        # Điểm cho nguyên liệu yêu thích với lý do chi tiết
         for ingredient in analysis['liked_ingredients']:
             if self._dish_contains_ingredient(dish, ingredient):
                 score += 15
-                reasons.append(f"Có {self._get_ingredient_name(ingredient)} mà bạn thích")
+                detailed_reason = self._get_detailed_ingredient_reason(dish, ingredient)
+                reasons.append(detailed_reason)
         
         # Trừ điểm cho nguyên liệu không thích
         for ingredient in analysis['disliked_ingredients']:
@@ -159,25 +160,28 @@ class SmartRecommendationEngine:
                 score -= 20
                 reasons.append(f"Có {self._get_ingredient_name(ingredient)} mà bạn không thích")
         
-        # Điểm cho yêu cầu sức khỏe
+        # Điểm cho yêu cầu sức khỏe với lý do cụ thể
         if analysis['health_conscious']:
-            if any(word in dish_name + ' ' + dish_desc for word in ['gỏi', 'salad', 'rau', 'luộc', 'hấp']):
-                score += 10
-                reasons.append("Món ăn lành mạnh, thanh đạm")
-            elif any(word in dish_name + ' ' + dish_desc for word in ['chiên', 'rang', 'nướng dầu']):
-                score -= 5
-                reasons.append("Món ăn có thể không phù hợp với chế độ ăn lành mạnh")
+            health_reason = self._get_health_reason(dish)
+            if health_reason:
+                if health_reason.startswith("Tốt:"):
+                    score += 10
+                    reasons.append(health_reason.replace("Tốt:", ""))
+                elif health_reason.startswith("Xấu:"):
+                    score -= 5
+                    reasons.append(health_reason.replace("Xấu:", ""))
         
-        # Bonus đặc biệt cho diet kết hợp (gym diet)
+        # Bonus đặc biệt cho diet kết hợp (gym diet) với lý do chi tiết
         if 'high-protein' in analysis['diet_type'] and 'low-fat' in analysis['diet_type']:
-            # Tôm, cá nướng/hấp = perfect cho gym diet
-            if any(protein in dish_name for protein in ['tôm', 'cá']) and any(method in dish_name + ' ' + dish_desc for method in ['nướng', 'hấp', 'luộc']):
-                score += 20
-                reasons.append("Hoàn hảo cho người tập gym")
-            # Thịt nạc
-            elif any(lean in dish_name for lean in ['gà', 'bò']) and not any(fatty in dish_name + ' ' + dish_desc for fatty in ['chiên', 'rang']):
-                score += 15
-                reasons.append("Thịt nạc phù hợp tập gym")
+            gym_reason = self._get_gym_diet_reason(dish)
+            if gym_reason:
+                if "Xuất sắc" in gym_reason:
+                    score += 20
+                elif "Tốt" in gym_reason:
+                    score += 15
+                elif "Phù hợp" in gym_reason:
+                    score += 10
+                reasons.append(gym_reason)
         
         # Điểm thưởng cho món phổ biến
         if dish_price and dish_price < 100000:
@@ -207,7 +211,7 @@ class SmartRecommendationEngine:
         }
     
     def _score_diet_compatibility(self, dish, diet_type: str) -> tuple:
-        """Tính điểm tương thích chế độ ăn"""
+        """Tính điểm tương thích chế độ ăn với lý do chi tiết"""
         dish_name = (self._get_dish_attr(dish, 'name') or '').lower()
         dish_desc = (self._get_dish_attr(dish, 'description') or '').lower()
         
@@ -215,34 +219,63 @@ class SmartRecommendationEngine:
             # Tránh tinh bột
             if any(word in dish_name for word in ['cơm', 'bún', 'phở', 'bánh', 'chè']):
                 return -10, "Có tinh bột cao (không phù hợp low-carb)"
-            if any(word in dish_name for word in ['thịt', 'cá', 'tôm', 'rau']):
-                return 12, "Phù hợp chế độ low-carb"
+            if 'cá' in dish_name:
+                return 12, "Cá giàu protein, không tinh bột"
+            elif 'tôm' in dish_name:
+                return 12, "Tôm ít carb, nhiều protein"
+            elif 'thịt' in dish_name:
+                return 10, "Thịt phù hợp chế độ low-carb"
+            elif 'rau' in dish_name:
+                return 8, "Rau củ ít carb"
                 
         elif diet_type == 'chay':
             if any(word in dish_name for word in ['thịt', 'cá', 'tôm', 'gà', 'heo', 'bò']):
                 return -15, "Có thịt/cá (không phù hợp chay)"
-            if any(word in dish_name for word in ['rau', 'đậu', 'chay']):
-                return 15, "Món chay phù hợp"
+            if 'chay' in dish_name:
+                return 15, "Món chay thuần túy"
+            elif any(word in dish_name for word in ['rau', 'đậu']):
+                return 12, "Từ thực vật tự nhiên"
                 
         elif diet_type == 'high-protein':
-            # Protein cao từ thịt, cá, tôm
-            if any(word in dish_name for word in ['thịt', 'cá', 'tôm', 'gà', 'trứng', 'bò', 'heo']):
-                return 15, "Giàu protein"
-            # Protein trung bình
+            # Protein cao từ thịt, cá, tôm với lý do cụ thể
+            if 'cá' in dish_name and any(method in dish_name + ' ' + dish_desc for method in ['nướng', 'hấp']):
+                return 18, "Cá nướng/hấp - protein cao, ít béo"
+            elif 'tôm' in dish_name:
+                return 16, "Tôm giàu protein, ít calo"
+            elif 'gà' in dish_name and 'chiên' not in dish_name:
+                return 15, "Thịt gà nạc, protein chất lượng"
+            elif 'bò' in dish_name:
+                return 14, "Thịt bò giàu protein và sắt"
+            elif any(word in dish_name for word in ['thịt', 'cá', 'trứng']):
+                return 12, "Nguồn protein động vật"
             elif any(word in dish_name for word in ['đậu', 'chả']):
-                return 8, "Có protein"
+                return 8, "Protein thực vật"
                 
         elif diet_type == 'low-fat':
-            # Ưu tiên món hấp, luộc, nướng
-            if any(word in dish_name + ' ' + dish_desc for word in ['hấp', 'luộc', 'nướng', 'gỏi']):
-                return 12, "Ít chất béo"
+            # Ưu tiên món hấp, luộc, nướng với lý do cụ thể
+            if 'hấp' in dish_name or 'hấp' in dish_desc:
+                return 15, "Món hấp không dầu mỡ"
+            elif 'luộc' in dish_name or 'luộc' in dish_desc:
+                return 14, "Luộc giữ nguyên dinh dưỡng"
+            elif 'gỏi' in dish_name:
+                return 13, "Gỏi tươi, ít chất béo"
+            elif 'nướng' in dish_name and 'dầu' not in dish_desc:
+                return 11, "Nướng không dầu"
+            elif 'canh' in dish_name:
+                return 10, "Canh thanh đạm"
             # Tránh món chiên, rang
             elif any(word in dish_name + ' ' + dish_desc for word in ['chiên', 'rang', 'xào dầu']):
-                return -8, "Nhiều dầu mỡ"
+                return -8, "Nhiều dầu mỡ khi chế biến"
                 
         elif diet_type == 'healthy':
-            if any(word in dish_name for word in ['gỏi', 'salad', 'luộc', 'hấp']):
-                return 10, "Món ăn lành mạnh"
+            if 'gỏi' in dish_name:
+                return 12, "Gỏi tươi, giàu vitamin"
+            elif 'salad' in dish_name:
+                return 11, "Salad bổ dưỡng"
+            elif 'luộc' in dish_name:
+                return 10, "Chế biến lành mạnh"
+            elif 'hấp' in dish_name:
+                return 10, "Hấp giữ dinh dưỡng"
         
         return 0, None
     
@@ -284,6 +317,107 @@ class SmartRecommendationEngine:
             'rice': 'cơm'
         }
         return name_map.get(ingredient_type, ingredient_type)
+    
+    def _get_detailed_ingredient_reason(self, dish, ingredient_type: str) -> str:
+        """Tạo lý do chi tiết cho nguyên liệu yêu thích"""
+        dish_name = (self._get_dish_attr(dish, 'name') or '').lower()
+        
+        if ingredient_type == 'seafood':
+            if 'tôm' in dish_name:
+                return "Tôm tươi ngon, giàu protein"
+            elif 'cá' in dish_name:
+                if 'nướng' in dish_name:
+                    return "Cá nướng thơm, ít béo"
+                elif 'hấp' in dish_name:
+                    return "Cá hấp giữ nguyên dinh dưỡng"
+                else:
+                    return "Cá tươi, omega-3 cao"
+            elif 'cua' in dish_name:
+                return "Cua biển ngọt thịt"
+            elif 'ốc' in dish_name:
+                return "Ốc giàu khoáng chất"
+            else:
+                return "Hải sản tươi ngon"
+                
+        elif ingredient_type == 'chicken':
+            if 'nướng' in dish_name:
+                return "Gà nướng thơm lừng"
+            elif 'luộc' in dish_name:
+                return "Gà luộc thanh đạm"
+            else:
+                return "Thịt gà mềm ngon"
+                
+        elif ingredient_type == 'beef':
+            if 'nướng' in dish_name:
+                return "Thịt bò nướng đậm đà"
+            elif 'phở' in dish_name:
+                return "Thịt bò phở thơm ngon"
+            else:
+                return "Thịt bò chất lượng"
+                
+        elif ingredient_type == 'vegetables':
+            if 'gỏi' in dish_name:
+                return "Rau củ tươi mát"
+            elif 'luộc' in dish_name:
+                return "Rau luộc giữ vitamin"
+            else:
+                return "Rau xanh bổ dưỡng"
+                
+        return f"Có {self._get_ingredient_name(ingredient_type)} yêu thích"
+    
+    def _get_health_reason(self, dish) -> str:
+        """Tạo lý do sức khỏe chi tiết"""
+        dish_name = (self._get_dish_attr(dish, 'name') or '').lower()
+        dish_desc = (self._get_dish_attr(dish, 'description') or '').lower()
+        
+        # Các món tốt cho sức khỏe
+        if 'gỏi' in dish_name:
+            return "Tốt:Gỏi tươi, nhiều chất xơ"
+        elif 'salad' in dish_name:
+            return "Tốt:Salad bổ sung vitamin"
+        elif 'luộc' in dish_name:
+            return "Tốt:Luộc không mất chất dinh dưỡng"
+        elif 'hấp' in dish_name:
+            return "Tốt:Hấp giữ nguyên giá trị dinh dưỡng"
+        elif 'canh' in dish_name:
+            if 'rau' in dish_name:
+                return "Tốt:Canh rau thanh mát"
+            else:
+                return "Tốt:Canh nước trong, ít calo"
+        elif any(word in dish_name for word in ['chiên', 'rang']):
+            return "Xấu:Chiên/rang nhiều dầu mỡ"
+        elif 'nướng' in dish_name and 'dầu' not in dish_desc:
+            return "Tốt:Nướng không dầu, thơm ngon"
+        
+        return None
+    
+    def _get_gym_diet_reason(self, dish) -> str:
+        """Tạo lý do cho chế độ ăn gym"""
+        dish_name = (self._get_dish_attr(dish, 'name') or '').lower()
+        dish_desc = (self._get_dish_attr(dish, 'description') or '').lower()
+        
+        # Kiểm tra protein + low fat
+        if 'tôm' in dish_name:
+            if 'hấp' in dish_name or 'luộc' in dish_name:
+                return "Xuất sắc cho gym: Tôm protein cao, hấp/luộc không béo"
+            elif 'nướng' in dish_name:
+                return "Tốt cho gym: Tôm nướng protein cao"
+            else:
+                return "Phù hợp gym: Tôm giàu protein"
+                
+        elif 'cá' in dish_name:
+            if any(method in dish_name + ' ' + dish_desc for method in ['hấp', 'luộc', 'nướng']):
+                return "Xuất sắc cho gym: Cá omega-3, chế biến lành mạnh"
+            else:
+                return "Tốt cho gym: Cá giàu protein và omega-3"
+                
+        elif 'gà' in dish_name and 'chiên' not in dish_name:
+            return "Tốt cho gym: Gà protein cao, ít béo"
+            
+        elif 'bò' in dish_name and not any(fatty in dish_name for fatty in ['chiên', 'rang']):
+            return "Phù hợp gym: Thịt bò protein + sắt"
+            
+        return None
     
     def get_recommendations(self, preference_text: str, top_k: int = 7) -> List[Dict[str, Any]]:
         """Lấy danh sách đề xuất món ăn"""

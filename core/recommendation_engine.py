@@ -3,6 +3,7 @@ Hệ thống đề xuất món ăn thông minh dựa trên sở thích người 
 """
 import re
 import json
+import os
 from typing import List, Dict, Any
 from utils.database_loader import load_dishes_from_database
 
@@ -11,14 +12,20 @@ class SmartRecommendationEngine:
         self.dishes = []
         self.load_menu()
         
-        # Từ điển mapping sở thích
+        # Từ điển mapping sở thích mở rộng
         self.diet_keywords = {
-            'low-carb': ['low carb', 'ít tinh bột', 'không tinh bột', 'giảm cân'],
-            'keto': ['keto', 'ketogenic', 'nhiều chất béo', 'ít carb'],
-            'chay': ['chay', 'vegetarian', 'vegan', 'không thịt', 'rau củ'],
-            'high-protein': ['protein', 'nhiều đạm', 'thịt', 'cá', 'tôm', 'trứng', 'giàu protein', 'tập gym', 'gym', 'thể hình'],
-            'low-fat': ['ít béo', 'ít chất béo', 'low fat', 'không dầu mỡ', 'ít dầu'],
-            'healthy': ['healthy', 'lành mạnh', 'sạch', 'eat clean', 'thanh đạm']
+            'low-carb': ['low carb', 'ít tinh bột', 'không tinh bột', 'giảm cân', 'atkins'],
+            'keto': ['keto', 'ketogenic', 'nhiều chất béo', 'ít carb', 'lchf'],
+            'chay': ['chay', 'vegetarian', 'vegan', 'không thịt', 'rau củ', 'plant based'],
+            'high-protein': ['protein', 'nhiều đạm', 'thịt', 'cá', 'tôm', 'trứng', 'giàu protein', 'tập gym', 'gym', 'thể hình', 'bodybuilding'],
+            'low-fat': ['ít béo', 'ít chất béo', 'low fat', 'không dầu mỡ', 'ít dầu', 'giảm béo'],
+            'healthy': ['healthy', 'lành mạnh', 'sạch', 'eat clean', 'thanh đạm', 'organic'],
+            'paleo': ['paleo', 'paleolithic', 'nguyên thủy', 'tự nhiên', 'không chế biến'],
+            'dash': ['dash', 'giảm huyết áp', 'ít muối', 'tim mạch'],
+            'mediterranean': ['địa trung hải', 'mediterranean', 'olive', 'dầu ô liu'],
+            'gluten-free': ['không gluten', 'gluten free', 'celiac', 'dị ứng gluten'],
+            'lactose-free': ['không lactose', 'lactose free', 'dị ứng sữa'],
+            'diabetic': ['tiểu đường', 'diabetic', 'ít đường', 'không đường', 'kiểm soát đường huyết']
         }
         
         self.spicy_keywords = {
@@ -28,17 +35,67 @@ class SmartRecommendationEngine:
         }
         
         self.ingredient_keywords = {
-            'seafood': ['hải sản', 'tôm', 'cua', 'ốc', 'sò', 'mực', 'cá'],
-            'beef': ['bò', 'thịt bò'],
-            'pork': ['heo', 'thịt heo', 'thịt lợn'],
-            'chicken': ['gà', 'thịt gà'],
-            'vegetables': ['rau', 'củ', 'cải', 'rau xanh', 'rau củ'],
-            'noodles': ['bún', 'phở', 'mì', 'bánh canh'],
-            'rice': ['cơm', 'gạo']
+            'seafood': ['hải sản', 'tôm', 'cua', 'ốc', 'sò', 'mực', 'cá', 'tép', 'ghẹ', 'bào ngư'],
+            'beef': ['bò', 'thịt bò', 'beef'],  
+            'pork': ['heo', 'thịt heo', 'thịt lợn', 'ba chỉ', 'sườn'],
+            'chicken': ['gà', 'thịt gà', 'chicken', 'gà tây'],
+            'vegetables': ['rau', 'củ', 'cải', 'rau xanh', 'rau củ', 'súp lơ', 'bông cải', 'cà', 'dưa'],
+            'noodles': ['bún', 'phở', 'mì', 'bánh canh', 'bánh tráng', 'nem', 'cuốn'],
+            'rice': ['cơm', 'gạo', 'xôi', 'chè'],
+            'tofu': ['đậu phụ', 'đậu hũ', 'tàu hũ', 'chả chay', 'thịt chay']
+        }
+        
+        # Từ khóa chay/mặn chính xác hơn
+        self.vegetarian_keywords = [
+            'chay', 'vegetarian', 'vegan', 'đậu phụ', 'đậu hũ', 'tàu hũ', 
+            'chả chay', 'thịt chay', 'nấm', 'rau củ', 'chay nguyên chất'
+        ]
+        
+        self.meat_keywords = [
+            'thịt', 'bò', 'heo', 'gà', 'vịt', 'cá', 'tôm', 'cua', 'ốc', 'sò', 
+            'mực', 'beef', 'pork', 'chicken', 'seafood'
+        ]
+        
+        # Texture preferences
+        self.texture_keywords = {
+            'crispy': ['giòn', 'crispy', 'giòn tan', 'giòn rụm'],
+            'soft': ['mềm', 'soft', 'mềm mại', 'tan chảy'],
+            'chewy': ['dai', 'chewy', 'dẻo', 'có độ nhai'],
+            'smooth': ['mịn', 'smooth', 'láng mịn', 'mượt'],
+            'rough': ['thô', 'sần sùi', 'có độ nhám']
+        }
+        
+        # Cooking methods
+        self.cooking_methods = {
+            'grilled': ['nướng', 'grilled', 'nướng than', 'nướng lửa'],
+            'steamed': ['hấp', 'steamed', 'hấp cách thủy'],
+            'boiled': ['luộc', 'boiled', 'niêu nước'],
+            'fried': ['chiên', 'fried', 'chiên giòn', 'chiên ngập dầu'],
+            'stir-fried': ['xào', 'stir-fried', 'xào tỏi', 'áp chảo'],
+            'braised': ['kho', 'braised', 'om', 'niêu'],
+            'raw': ['sống', 'raw', 'tái', 'gỏi'],
+            'soup': ['canh', 'soup', 'súp', 'nước dùng']
+        }
+        
+        # Regional preferences
+        self.regional_keywords = {
+            'north': ['bắc', 'hà nội', 'miền bắc', 'northern', 'phở bắc'],
+            'central': ['trung', 'huế', 'miền trung', 'central', 'bún bò huế'],
+            'south': ['nam', 'sài gòn', 'miền nam', 'southern', 'bún thịt nướng']
+        }
+        
+        # Health conditions
+        self.health_keywords = {
+            'weight-loss': ['giảm cân', 'weight loss', 'béo phì', 'slimming'],
+            'muscle-gain': ['tăng cơ', 'muscle gain', 'tập gym', 'bodybuilding'],
+            'heart-healthy': ['tim mạch', 'heart healthy', 'cholesterol', 'huyết áp'],
+            'digestive': ['tiêu hóa', 'digestive', 'dạ dày', 'đại tràng'],
+            'anti-inflammatory': ['chống viêm', 'anti inflammatory', 'khớp', 'arthritis'],
+            'energy-boost': ['tăng năng lượng', 'energy boost', 'mệt mỏi', 'suy nhược']
         }
         
         self.dislike_keywords = [
-            'không thích', 'không ăn', 'dị ứng', 'không được', 'tránh'
+            'không thích', 'không ăn', 'dị ứng', 'không được', 'tránh', 'ghét'
         ]
     
     def load_menu(self):
@@ -60,7 +117,11 @@ class SmartRecommendationEngine:
             'liked_ingredients': [],
             'disliked_ingredients': [],
             'special_requests': [],
-            'health_conscious': False
+            'health_conscious': False,
+            'texture_preferences': [],
+            'cooking_methods': [],
+            'regional_preferences': [],
+            'health_conditions': []
         }
         
         # Phân tích chế độ ăn
@@ -84,6 +145,28 @@ class SmartRecommendationEngine:
                 else:
                     analysis['disliked_ingredients'].append(ingredient_type)
         
+        # Phân tích texture preferences
+        for texture, keywords in self.texture_keywords.items():
+            if any(keyword in preference_text for keyword in keywords):
+                analysis['texture_preferences'].append(texture)
+        
+        # Phân tích cooking methods
+        for method, keywords in self.cooking_methods.items():
+            if any(keyword in preference_text for keyword in keywords):
+                context = self._get_keyword_context(preference_text, keywords[0])
+                if not any(dislike in context for dislike in self.dislike_keywords):
+                    analysis['cooking_methods'].append(method)
+        
+        # Phân tích regional preferences
+        for region, keywords in self.regional_keywords.items():
+            if any(keyword in preference_text for keyword in keywords):
+                analysis['regional_preferences'].append(region)
+        
+        # Phân tích health conditions
+        for condition, keywords in self.health_keywords.items():
+            if any(keyword in preference_text for keyword in keywords):
+                analysis['health_conditions'].append(condition)
+        
         # Phân tích yêu cầu đặc biệt
         health_keywords = ['thanh đạm', 'ít dầu', 'lành mạnh', 'sạch', 'tươi']
         if any(keyword in preference_text for keyword in health_keywords):
@@ -101,6 +184,37 @@ class SmartRecommendationEngine:
                 end = min(len(words), i + context_length + 1)
                 return ' '.join(words[start:end])
         return ''
+    
+    def _classify_vegetarian_meat(self, dish) -> str:
+        """Phân loại món ăn chay/mặn dựa trên database và keyword analysis"""
+        # Ưu tiên thông tin từ database
+        vegetarian_or_meat = self._get_dish_attr(dish, 'vegetarian_or_meat', '').lower()
+        
+        if vegetarian_or_meat:
+            if any(veg_word in vegetarian_or_meat for veg_word in ['chay', 'vegetarian', 'vegan']):
+                return 'vegetarian'
+            elif any(meat_word in vegetarian_or_meat for meat_word in ['mặn', 'meat', 'thịt']):
+                return 'meat'
+        
+        # Fallback: phân tích từ tên và mô tả
+        dish_name = (self._get_dish_attr(dish, 'name') or '').lower()
+        dish_desc = (self._get_dish_attr(dish, 'description') or '').lower()
+        dish_ingredients = (self._get_dish_attr(dish, 'ingredients') or '').lower()
+        
+        full_text = f"{dish_name} {dish_desc} {dish_ingredients}"
+        
+        # Kiểm tra từ khóa chay
+        vegetarian_score = sum(1 for keyword in self.vegetarian_keywords if keyword in full_text)
+        
+        # Kiểm tra từ khóa mặn  
+        meat_score = sum(1 for keyword in self.meat_keywords if keyword in full_text)
+        
+        if vegetarian_score > meat_score:
+            return 'vegetarian'
+        elif meat_score > 0:
+            return 'meat'
+        else:
+            return 'unknown'
     
     def _get_dish_attr(self, dish, attr_name: str, default=''):
         """Safely get dish attribute whether it's an object or dictionary"""
@@ -229,12 +343,21 @@ class SmartRecommendationEngine:
                 return 8, "Rau củ ít carb"
                 
         elif diet_type == 'chay':
-            if any(word in dish_name for word in ['thịt', 'cá', 'tôm', 'gà', 'heo', 'bò']):
+            classification = self._classify_vegetarian_meat(dish)
+            
+            if classification == 'meat':
                 return -15, "Có thịt/cá (không phù hợp chay)"
-            if 'chay' in dish_name:
-                return 15, "Món chay thuần túy"
-            elif any(word in dish_name for word in ['rau', 'đậu']):
-                return 12, "Từ thực vật tự nhiên"
+            elif classification == 'vegetarian':
+                if 'chay' in dish_name:
+                    return 15, "Món chay thuần túy 100%"
+                elif 'đậu phụ' in dish_name or 'tàu hũ' in dish_name:
+                    return 14, "Đậu phụ giàu protein thực vật"
+                elif 'nấm' in dish_name:
+                    return 13, "Nấm bổ dưỡng, umami tự nhiên"
+                else:
+                    return 12, "Thực phẩm thực vật tự nhiên"
+            elif any(word in dish_name for word in ['rau', 'củ', 'gỏi']) and classification != 'meat':
+                return 10, "Rau củ tươi, có thể ăn chay"
                 
         elif diet_type == 'high-protein':
             # Protein cao từ thịt, cá, tôm với lý do cụ thể

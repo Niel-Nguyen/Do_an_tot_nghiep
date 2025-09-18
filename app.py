@@ -569,13 +569,37 @@ def chat_api():
     # Xử lý đặc biệt cho preference request
     if is_preference_request:
         try:
-            from core.recommendation_engine import recommendation_engine
+            from core.hybrid_recommendation_engine import recommendation_engine
             
-            # Lấy đề xuất từ recommendation engine
-            recommendations = recommendation_engine.get_recommendations(user_message, top_k=7)
+            # Trích xuất preference gốc từ message dài
+            import re
+            preference_match = re.search(r'"([^"]*)"', user_message)
+            actual_preference = preference_match.group(1) if preference_match else user_message
             
-            # Format response
-            bot_response = recommendation_engine.format_recommendation_response(recommendations, user_message)
+            print(f"[DEBUG] Original message: {user_message}")
+            print(f"[DEBUG] Extracted preference: {actual_preference}")
+            
+            # Lấy đề xuất với top_k lớn để filter sau
+            all_recommendations = recommendation_engine.get_recommendations(actual_preference, top_k=15)
+            
+            # Filter để chỉ lấy món có điểm phù hợp cao (>= 0.4) và số lượng linh hoạt
+            recommendations = []
+            for dish, score, explanation in all_recommendations:
+                if score >= 0.4:  # Ngưỡng điểm tối thiểu
+                    recommendations.append((dish, score, explanation))
+                if len(recommendations) >= 8:  # Tối đa 8 món để không quá dài
+                    break
+            
+            # Đảm bảo ít nhất 2 món (nếu có)
+            if len(recommendations) < 2 and len(all_recommendations) >= 2:
+                recommendations = all_recommendations[:2]
+            elif len(recommendations) == 0 and len(all_recommendations) > 0:
+                recommendations = all_recommendations[:1]
+            
+            print(f"[DEBUG] Filtered {len(recommendations)} recommendations from {len(all_recommendations)} total")
+            
+            # Format response với preference gốc
+            bot_response = recommendation_engine.format_recommendation_response(recommendations, actual_preference)
             
             print(f"[DEBUG] Generated {len(recommendations)} recommendations")
             

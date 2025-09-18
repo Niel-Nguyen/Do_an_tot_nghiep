@@ -39,7 +39,7 @@ class SmartRecommendationEngine:
             'beef': ['bò', 'thịt bò', 'beef'],  
             'pork': ['heo', 'thịt heo', 'thịt lợn', 'ba chỉ', 'sườn'],
             'chicken': ['gà', 'thịt gà', 'chicken', 'gà tây'],
-            'vegetables': ['rau', 'củ', 'cải', 'rau xanh', 'rau củ', 'súp lơ', 'bông cải', 'cà', 'dưa'],
+            'vegetables': ['rau', 'củ', 'cải', 'rau xanh', 'rau củ', 'súp lơ', 'bông cải', 'cà', 'dưa', 'rau muống', 'rau lang', 'cải thìa', 'xà lách', 'cải bó xôi', 'rau dền', 'mồng tơi', 'canh rau', 'gỏi rau', 'nhiều rau', 'đầy rau', 'toàn rau'],
             'noodles': ['bún', 'phở', 'mì', 'bánh canh', 'bánh tráng', 'nem', 'cuốn'],
             'rice': ['cơm', 'gạo', 'xôi', 'chè'],
             'tofu': ['đậu phụ', 'đậu hũ', 'tàu hũ', 'chả chay', 'thịt chay']
@@ -94,6 +94,13 @@ class SmartRecommendationEngine:
             'energy-boost': ['tăng năng lượng', 'energy boost', 'mệt mỏi', 'suy nhược']
         }
         
+        # Temperature preferences - mới thêm
+        self.temperature_keywords = {
+            'hot': ['ấm áp', 'nóng', 'hot', 'canh nóng', 'súp nóng', 'ấm', 'nóng hổi'],
+            'warm': ['ấm', 'warm', 'ấm áp', 'ấm lòng'],
+            'cold': ['lạnh', 'cold', 'mát', 'đá', 'iced']
+        }
+        
         self.dislike_keywords = [
             'không thích', 'không ăn', 'dị ứng', 'không được', 'tránh', 'ghét'
         ]
@@ -121,7 +128,8 @@ class SmartRecommendationEngine:
             'texture_preferences': [],
             'cooking_methods': [],
             'regional_preferences': [],
-            'health_conditions': []
+            'health_conditions': [],
+            'temperature_preferences': []
         }
         
         # Phân tích chế độ ăn
@@ -166,6 +174,11 @@ class SmartRecommendationEngine:
         for condition, keywords in self.health_keywords.items():
             if any(keyword in preference_text for keyword in keywords):
                 analysis['health_conditions'].append(condition)
+        
+        # Phân tích temperature preferences
+        for temp, keywords in self.temperature_keywords.items():
+            if any(keyword in preference_text for keyword in keywords):
+                analysis['temperature_preferences'].append(temp)
         
         # Phân tích yêu cầu đặc biệt
         health_keywords = ['thanh đạm', 'ít dầu', 'lành mạnh', 'sạch', 'tươi']
@@ -260,6 +273,20 @@ class SmartRecommendationEngine:
             score += spicy_score
             if spicy_reason:
                 reasons.append(spicy_reason)
+        
+        # Điểm cho vùng miền yêu thích
+        for region in analysis['regional_preferences']:
+            regional_score, regional_reason = self._score_regional_preference(dish, region)
+            score += regional_score
+            if regional_reason:
+                reasons.append(regional_reason)
+        
+        # Điểm cho temperature preferences
+        for temp in analysis['temperature_preferences']:
+            temp_score, temp_reason = self._score_temperature_preference(dish, temp)
+            score += temp_score
+            if temp_reason:
+                reasons.append(temp_reason)
         
         # Điểm cho nguyên liệu yêu thích với lý do chi tiết
         for ingredient in analysis['liked_ingredients']:
@@ -402,6 +429,79 @@ class SmartRecommendationEngine:
         
         return 0, None
     
+    def _score_regional_preference(self, dish, region: str) -> tuple:
+        """Tính điểm ưu tiên vùng miền"""
+        dish_name = (self._get_dish_attr(dish, 'name') or '').lower()
+        dish_desc = (self._get_dish_attr(dish, 'description') or '').lower()
+        dish_region = (self._get_dish_attr(dish, 'region') or '').lower()
+        
+        full_text = f"{dish_name} {dish_desc} {dish_region}"
+        
+        if region == 'north':
+            # Món miền Bắc - có từ khóa đặc trưng
+            north_keywords = ['phở', 'bún chả', 'chả cá', 'nem rán', 'xôi', 'bánh cuốn', 'bún đậu', 'miến gà', 'canh chua', 'bắc', 'hà nội']
+            if any(keyword in full_text for keyword in north_keywords):
+                return 20, "Món đặc trưng miền Bắc"
+            elif 'bắc' in dish_region or 'hà nội' in dish_region or 'northern' in dish_region:
+                return 18, "Món của miền Bắc"
+            # Trừ điểm cho món rõ ràng của miền khác
+            elif any(keyword in full_text for keyword in ['bún bò huế', 'cơm tấm', 'bánh xèo', 'hủ tiếu', 'huế', 'sài gòn']):
+                return -15, "Không phải món miền Bắc"
+                
+        elif region == 'central':
+            # Món miền Trung - có từ khóa đặc trưng
+            central_keywords = ['bún bò huế', 'bánh khoái', 'bánh bèo', 'bánh ít', 'mì quảng', 'cao lầu', 'bánh căn', 'trung', 'huế']
+            if any(keyword in full_text for keyword in central_keywords):
+                return 20, "Món đặc trưng miền Trung"
+            elif 'trung' in dish_region or 'huế' in dish_region or 'central' in dish_region:
+                return 18, "Món của miền Trung"
+            # Trừ điểm cho món rõ ràng của miền khác
+            elif any(keyword in full_text for keyword in ['phở', 'bún chả', 'cơm tấm', 'bánh xèo', 'bắc', 'sài gòn']):
+                return -15, "Không phải món miền Trung"
+                
+        elif region == 'south':
+            # Món miền Nam - có từ khóa đặc trưng  
+            south_keywords = ['cơm tấm', 'bánh xèo', 'hủ tiếu', 'bánh mì', 'bánh khọt', 'bún thịt nướng', 'gỏi cuốn', 'nam', 'sài gòn']
+            if any(keyword in full_text for keyword in south_keywords):
+                return 20, "Món đặc trưng miền Nam"
+            elif 'nam' in dish_region or 'sài gòn' in dish_region or 'southern' in dish_region:
+                return 18, "Món của miền Nam"
+            # Trừ điểm cho món rõ ràng của miền khác
+            elif any(keyword in full_text for keyword in ['phở', 'bún chả', 'bún bò huế', 'bánh khoái', 'bắc', 'huế']):
+                return -15, "Không phải món miền Nam"
+        
+        return 0, None
+    
+    def _score_temperature_preference(self, dish, temp_preference: str) -> tuple:
+        """Tính điểm cho sở thích nhiệt độ món ăn"""
+        dish_name = (self._get_dish_attr(dish, 'name') or '').lower()
+        dish_desc = (self._get_dish_attr(dish, 'description') or '').lower()
+        
+        full_text = f"{dish_name} {dish_desc}"
+        
+        if temp_preference in ['hot', 'warm']:
+            # Ưu tiên món nóng/ấm
+            hot_keywords = ['canh', 'súp', 'soup', 'nước dùng', 'lẩu', 'cháo', 'chè', 'nóng', 'ấm']
+            if any(keyword in full_text for keyword in hot_keywords):
+                return 12, "Món ấm áp như bạn yêu cầu"
+            # Món xào, hầm, nướng cũng thường ăn nóng
+            elif any(keyword in full_text for keyword in ['xào', 'hầm', 'kho', 'rim', 'nướng']):
+                return 8, "Món nóng phù hợp"
+            # Trừ điểm cho món lạnh
+            elif any(keyword in full_text for keyword in ['gỏi', 'salad', 'kem', 'đá', 'lạnh']):
+                return -5, "Món lạnh (không phù hợp yêu cầu ấm áp)"
+                
+        elif temp_preference == 'cold':
+            # Ưu tiên món lạnh
+            cold_keywords = ['gỏi', 'salad', 'kem', 'đá', 'lạnh', 'mát']
+            if any(keyword in full_text for keyword in cold_keywords):
+                return 12, "Món mát lạnh như bạn yêu cầu"
+            # Trừ điểm cho món nóng
+            elif any(keyword in full_text for keyword in ['canh', 'súp', 'lẩu', 'cháo']):
+                return -5, "Món nóng (không phù hợp yêu cầu lạnh)"
+        
+        return 0, None
+    
     def _score_spicy_level(self, dish, preferred_level: str) -> tuple:
         """Tính điểm độ cay"""
         dish_name = dish.name.lower()
@@ -480,11 +580,15 @@ class SmartRecommendationEngine:
                 
         elif ingredient_type == 'vegetables':
             if 'gỏi' in dish_name:
-                return "Rau củ tươi mát"
+                return "Gỏi rau củ tươi mát, nhiều chất xơ"
             elif 'luộc' in dish_name:
-                return "Rau luộc giữ vitamin"
+                return "Rau luộc giữ vitamin, ít calo"
+            elif 'canh' in dish_name and 'rau' in dish_name:
+                return "Canh rau thanh mát, nhiều rau xanh"
+            elif any(veg in dish_name for veg in ['rau muống', 'cải', 'rau lang']):
+                return "Rau xanh giàu sắt và vitamin"
             else:
-                return "Rau xanh bổ dưỡng"
+                return "Rau xanh bổ dưỡng, nhiều chất xơ"
                 
         return f"Có {self._get_ingredient_name(ingredient_type)} yêu thích"
     

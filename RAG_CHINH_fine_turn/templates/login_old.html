@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Face Login</title>
+    <style>
+        body { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            font-family: Arial, sans-serif;
+        }
+        video, canvas { 
+            border: 2px solid #007bff; 
+            margin: 10px 0; 
+        }
+        video { 
+            display: block !important; 
+        }
+        #status { 
+            margin: 10px 0; 
+            color: #007bff; 
+            padding: 10px;
+            text-align: center;
+        }
+        .error { color: red; }
+        .success { color: green; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #debug-btn { background: orange; }
+        #backup-upload {
+            margin: 20px 0;
+            text-align: center;
+        }
+        #register-form {
+            margin: 20px 0;
+            text-align: center;
+        }
+        input[type="text"] {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Face Login</h2>
+    <p><small>🔧 Having camera issues? <a href="/camera-test" target="_blank">Test Camera Here</a></small></p>
+    
+    <video id="video" width="320" height="240" autoplay playsinline></video>
+    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+    
+    <div>
+        <button id="capture-btn" style="display:none;">Capture Photo</button>
+        <button id="debug-btn">Debug Video</button>
+    </div>
+    
+    <div id="status">Initializing camera...</div>
+    
+    <div id="backup-upload" style="display:none;">
+        <p><strong>Alternative: Upload a photo</strong></p>
+        <input type="file" id="file-input" accept="image/*" />
+        <button id="upload-btn">Use This Photo</button>
+    </div>
+    
+    <div id="register-form" style="display:none;">
+        <input type="text" id="name-input" placeholder="Enter your name" />
+        <button id="register-btn">Register</button>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const statusDiv = document.getElementById('status');
+        const registerForm = document.getElementById('register-form');
+        const nameInput = document.getElementById('name-input');
+        const registerBtn = document.getElementById('register-btn');
+        const backupUpload = document.getElementById('backup-upload');
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const captureBtn = document.getElementById('capture-btn');
+        const debugBtn = document.getElementById('debug-btn');
+        
+        let capturedImage = null;
+        let autoCapture = null;
+
+        // Initialize camera when page loads
+        window.addEventListener('load', function() {
+            console.log('Page loaded, initializing camera...');
+            initCamera();
+        });
+
+        function initCamera() {
+            // Check browser support
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showError("Your browser doesn't support camera access. Please use Chrome, Firefox, or Edge.");
+                console.error('Browser does not support getUserMedia');
+                backupUpload.style.display = 'block';
+                return;
+            }
+
+            // Check HTTPS requirement
+            if (location.protocol !== 'https:' && 
+                location.hostname !== 'localhost' && 
+                location.hostname !== '127.0.0.1') {
+                statusDiv.innerHTML = `
+                    <p style="color: red;">Camera access requires HTTPS!</p>
+                    <p>Please access this page using: <strong>https://${location.hostname}:${location.port || '5000'}</strong></p>
+                    <button onclick="location.href='https://${location.hostname}:${location.port || '5000'}${location.pathname}${location.search}'">Switch to HTTPS</button>
+                `;
+                backupUpload.style.display = 'block';
+                return;
+            }
+
+            console.log('Starting camera access...');
+            statusDiv.innerText = "Requesting camera access...";
+
+            // Request camera access
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 320 }, 
+                    height: { ideal: 240 } 
+                } 
+            })
+            .then(function(stream) {
+                console.log('Camera access successful, stream:', stream);
+                video.srcObject = stream;
+                statusDiv.innerText = "Camera ready. Please look at the camera...";
+                statusDiv.className = 'success';
+                captureBtn.style.display = 'inline-block';
+                
+                // Setup video event handlers
+                video.onloadedmetadata = function() {
+                    console.log('Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
+                };
+                
+                video.onplay = function() {
+                    console.log('Video started playing');
+                };
+                
+                video.onerror = function(error) {
+                    console.error('Video error:', error);
+                    showError("Video playback error: " + error.message);
+                };
+
+                // Auto-capture after 3 seconds
+                autoCapture = setTimeout(function() {
+                    if (video.srcObject && video.readyState >= 2) {
+                        captureAndProcess();
+                    }
+                }, 3000);
+            })
+            .catch(function(err) {
+                console.error('Camera access failed:', err);
+                showError(`Camera failed: ${err.name} - ${err.message}`);
+                
+                // Show help based on error type
+                let helpMessage = '';
+                switch(err.name) {
+                    case 'NotAllowedError':
+                        helpMessage = 'Please allow camera permission and refresh the page.';
+                        break;
+                    case 'NotFoundError':
+                        helpMessage = 'No camera found on this device.';
+                        break;
+                    case 'NotReadableError':
+                        helpMessage = 'Camera is being used by another application.';
+                        break;
+                    default:
+                        helpMessage = 'Please check camera permissions and try again.';
+                }
+                
+                const helpDiv = document.createElement('div');
+                helpDiv.innerHTML = `
+                    <p style="color: red;">${helpMessage}</p>
+                    <button onclick="location.reload()">Try Again</button>
+                    <a href="/camera-test" target="_blank">Open Camera Test</a>
+                `;
+                document.body.appendChild(helpDiv);
+                
+                backupUpload.style.display = 'block';
+            });
+        }
+
+        function showError(message) {
+            statusDiv.innerText = message;
+            statusDiv.className = 'error';
+        }
+
+        function captureAndProcess() {
+            if (!video.srcObject || video.readyState < 2) {
+                console.log('Video not ready for capture');
+                return;
+            }
+            
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            capturedImage = canvas.toDataURL('image/jpeg');
+            statusDiv.innerText = "Photo captured. Processing...";
+            captureBtn.style.display = 'none';
+            processImage();
+        }
+
+        function processImage() {
+            if (!capturedImage) {
+                showError("No image to process.");
+                return;
+            }
+            
+            // Get table context from URL parameters
+            const params = new URLSearchParams(window.location.search);
+            const tableToken = params.get('table_token');
+            const tableId = params.get('table_id');
+            
+            // Prepare request body
+            const requestBody = { image: capturedImage };
+            if (tableToken) requestBody.table_token = tableToken;
+            if (tableId) requestBody.table_id = tableId;
+            
+            fetch('/face-login', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "success") {
+                    statusDiv.innerText = "Welcome, " + data.name + "!";
+                    statusDiv.className = 'success';
+                    
+                    const redirectUrl = data.redirect || buildRedirectUrl(tableToken, tableId);
+                    setTimeout(() => { window.location.href = redirectUrl; }, 700);
+                } else if (data.status === "new_user") {
+                    statusDiv.innerText = "Face not recognized. Please register.";
+                    statusDiv.className = 'error';
+                    registerForm.style.display = "block";
+                } else {
+                    showError("Recognition failed. Please try again.");
+                    captureBtn.style.display = 'inline-block';
+                }
+            })
+            .catch(() => { 
+                showError("Server error! Please try again.");
+                captureBtn.style.display = 'inline-block';
+            });
+        }
+
+        function buildRedirectUrl(tableToken, tableId) {
+            if (tableToken) return `/mobile_menu?table_token=${encodeURIComponent(tableToken)}`;
+            if (tableId) return `/mobile_menu?table_id=${encodeURIComponent(tableId)}`;
+            return '/mobile_menu';
+        }
+
+        // Event handlers
+        captureBtn.onclick = function() {
+            if (autoCapture) clearTimeout(autoCapture);
+            captureAndProcess();
+        };
+
+        debugBtn.onclick = function() {
+            console.log('=== VIDEO DEBUG INFO ===');
+            const debugInfo = `
+Video Element Debug:
+- srcObject: ${video.srcObject ? 'Present' : 'NULL'}
+- readyState: ${video.readyState} (4=HAVE_ENOUGH_DATA)
+- dimensions: ${video.videoWidth}x${video.videoHeight}
+- paused: ${video.paused}
+- muted: ${video.muted}
+- display: ${window.getComputedStyle(video).display}
+- visibility: ${window.getComputedStyle(video).visibility}
+            `;
+            alert(debugInfo);
+            console.log(debugInfo);
+        };
+
+        uploadBtn.onclick = function() {
+            const file = fileInput.files[0];
+            if (!file) {
+                showError("Please select an image file.");
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                capturedImage = e.target.result;
+                statusDiv.innerText = "Image uploaded. Processing...";
+                backupUpload.style.display = 'none';
+                processImage();
+            };
+            reader.readAsDataURL(file);
+        };
+
+        registerBtn.onclick = function() {
+            const name = nameInput.value.trim();
+            if (!name) {
+                showError("Please enter your name.");
+                return;
+            }
+            if (!capturedImage) {
+                showError("Please capture or upload a photo first.");
+                return;
+            }
+            
+            statusDiv.innerText = "Registering...";
+            
+            const params = new URLSearchParams(window.location.search);
+            const tableToken = params.get('table_token');
+            const tableId = params.get('table_id');
+            
+            const requestBody = { name: name, image: capturedImage };
+            if (tableToken) requestBody.table_token = tableToken;
+            if (tableId) requestBody.table_id = tableId;
+            
+            fetch('/face-register', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === "registered") {
+                    statusDiv.innerText = "Registered! Welcome, " + data.name + "!";
+                    statusDiv.className = 'success';
+                    
+                    const redirectUrl = data.redirect || buildRedirectUrl(tableToken, tableId);
+                    setTimeout(() => { window.location.href = redirectUrl; }, 700);
+                } else {
+                    showError("Registration failed. Please try again.");
+                }
+            })
+            .catch(() => { 
+                showError("Server error! Please try again.");
+            });
+        };
+    </script>
+</body>
+</html>

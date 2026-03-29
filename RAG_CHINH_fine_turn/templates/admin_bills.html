@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Danh sách hóa đơn</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { background: #f8f9fa; }
+        h2 { margin: 30px 0 20px 0; }
+        .table thead th { background: #007bff; color: #fff; }
+        .table-hover tbody tr:hover { background: #e9ecef; }
+        .status-pending { color: #ffc107; font-weight: bold; }
+        .status-confirmed { color: #17a2b8; font-weight: bold; }
+        .status-in_progress { color: #0d6efd; font-weight: bold; }
+        .status-done { color: #28a745; font-weight: bold; }
+        .status-completed { color: #28a745; font-weight: bold; }
+        .status-sent_to_kitchen { color: #6610f2; font-weight: bold; }
+        .status-paid { color: #20c997; font-weight: bold; }
+        .status-cancelled { color: #dc3545; font-weight: bold; }
+        .badge-status { font-size: 1em; padding: 0.5em 1em; border-radius: 12px; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-confirmed { background: #d1ecf1; color: #0c5460; }
+        .badge-in_progress { background: #cce5ff; color: #004085; }
+        .badge-done, .badge-completed { background: #d4edda; color: #155724; }
+        .badge-paid { background: #f8d7da; color: #721c24; }
+        .badge-sent_to_kitchen { background: #e0cfff; color: #6610f2; }
+        .badge-cancelled { background: #f8d7da; color: #dc3545; }
+        .notify-bell {
+            position: fixed;
+            top: 24px;
+            right: 36px;
+            z-index: 9999;
+            font-size: 2.2rem;
+            color: #007bff;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px #0002;
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .notify-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #dc3545;
+            color: #fff;
+            border-radius: 50%;
+            font-size: 1rem;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 1px 4px #0003;
+        }
+        /* Hiệu ứng động */
+        @keyframes flashRow {
+          0%   { background: #fffbe6; }
+          60%  { background: #fffbe6; }
+          100% { background: inherit; }
+        }
+        .row-flash {
+          animation: flashRow 1.5s ease;
+        }
+        @keyframes bellShake {
+          0% { transform: rotate(0); }
+          20% { transform: rotate(-15deg); }
+          40% { transform: rotate(10deg); }
+          60% { transform: rotate(-10deg); }
+          80% { transform: rotate(5deg); }
+          100% { transform: rotate(0); }
+        }
+        .bell-shake {
+          animation: bellShake 0.7s;
+        }
+        @keyframes badgePop {
+          0% { transform: scale(1); }
+          30% { transform: scale(1.4); }
+          60% { transform: scale(0.9); }
+          100% { transform: scale(1); }
+        }
+        .badge-pop {
+          animation: badgePop 0.7s;
+        }
+        .modal.fade .modal-dialog {
+          transition: transform 0.3s cubic-bezier(.4,0,.2,1),opacity 0.3s cubic-bezier(.4,0,.2,1);
+          transform: translateY(-30px) scale(0.98);
+          opacity: 0;
+        }
+        .modal.show .modal-dialog {
+          transform: none;
+          opacity: 1;
+        }
+        #staff-bell:active {
+            background: #ffd6e6;
+            box-shadow: 0 2px 8px #e83e8c44;
+        }
+        #staff-bell .fa-user-headset {
+            animation: staffIconPulse 1.2s infinite alternate;
+        }
+        @keyframes staffIconPulse {
+            0% { transform: scale(1); color: #e83e8c; }
+            100% { transform: scale(1.18); color: #ff5fa2; }
+        }
+        #staff-bell .fa-user-headset {
+          display: inline-block !important;
+          color: #e83e8c !important;
+          font-size: 1.5rem !important;
+          width: auto !important;
+          height: auto !important;
+          opacity: 1 !important;
+        }
+        
+        /* Fix modal backdrop issues */
+        .modal-backdrop {
+            z-index: 1040;
+        }
+        .modal {
+            z-index: 1050;
+        }
+        .modal.show {
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        /* Prevent body scroll when modal is open */
+        body.modal-open {
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 class="text-center">Danh sách hóa đơn (Bill) nhà hàng</h2>
+    
+    <!-- Thông báo về lịch sử đơn hàng -->
+    <div class="alert alert-info text-center mb-4">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Lưu ý:</strong> Các đơn hàng đã thanh toán được chuyển tự động vào 
+        <button class="btn btn-link p-0" style="text-decoration: underline;" onclick="showOrderHistory()">
+            <strong>"Lịch Sử Đơn"</strong>
+        </button> 
+        để giao diện gọn gàng hơn.
+    </div>
+    
+    <!-- Thống kê đơn hàng -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-primary">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-primary">
+                        <i class="fas fa-clock me-2"></i>Đơn Hàng Đang Xử Lý
+                    </h5>
+                    <h2 class="text-primary">{{ active_count or 0 }}</h2>
+                    <small class="text-muted">Đơn hàng chưa thanh toán</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-success">
+                        <i class="fas fa-check-circle me-2"></i>Đơn Hàng Đã Hoàn Thành
+                    </h5>
+                    <h2 class="text-success">{{ paid_count or 0 }}</h2>
+                    <small class="text-muted">Đơn hàng đã thanh toán (trong lịch sử)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="text-center mb-4">
+        <a href="/admin/dashboard" class="btn btn-secondary me-2">
+            <i class="fas fa-arrow-left me-2"></i>Quay Lại Dashboard
+        </a>
+        <a href="/admin/tables" class="btn btn-primary me-2">
+            <i class="fas fa-table me-2"></i>Quản lý bàn
+        </a>
+        <a href="/admin/status" class="btn btn-warning me-2">
+            <i class="fas fa-cog me-2"></i>Quản lý món ăn
+        </a>
+        <button class="btn btn-success" onclick="showOrderHistory()">
+            <i class="fas fa-history me-2"></i>Xem Lịch Sử Đơn
+        </button>
+    </div>
+    <!-- Icon chuông thông báo -->
+    <div class="notify-bell" id="notify-bell" title="Có đơn hàng mới!">
+        <i class="fas fa-bell"></i>
+        <span class="notify-badge" id="notify-badge" style="display:none;">1</span>
+    </div>
+    <!-- Icon nhân viên gọi -->
+    <div class="notify-bell" id="staff-bell" title="Có bàn gọi nhân viên!" style="top:94px;background:#fff0f6;color:#e83e8c;position:fixed;">
+        <i class="fa-solid fa-user-large"></i>
+        <span class="notify-badge" id="staff-badge" style="display:none;">1</span>
+    </div>
+    <div class="table-responsive">
+        {% if bills %}
+            {% set grouped_bills = {} %}
+            {% for bill in bills %}
+                {% set table_name = bill['table_name'] %}
+                {% if table_name not in grouped_bills %}
+                    {% set _ = grouped_bills.update({table_name: []}) %}
+                {% endif %}
+                {% set _ = grouped_bills[table_name].append(bill) %}
+            {% endfor %}
+            {% for table_name, bills_in_table in grouped_bills.items() %}
+            <h4 class="mt-4 mb-2">Bàn {{ table_name }}</h4>
+            <table class="table table-bordered table-hover align-middle mb-4">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Thời gian tạo</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
+                    <th>Chi tiết</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for bill in bills_in_table %}
+                <tr data-order-id="{{ bill['order_id'] }}">
+                    <td><span style="font-size:0.95em">{{ bill['order_id'] }}</span></td>
+                    <td>{{ bill['created_at'] }}</td>
+                    <td><b>{{ bill['total'] | default(0) | int | string }} đ</b></td>
+                    <td>
+                        <span class="status-{{ bill.get('status', 'pending').replace(' ', '_') }}">
+                            {{ bill.get('status', 'pending')|capitalize }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin_bill_detail', user_id=bill['user_id'], order_id=bill['order_id']) }}" class="btn btn-sm btn-primary">Xem chi tiết</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endfor %}
+        {% else %}
+        <!-- Hiển thị khi không có đơn hàng nào đang hoạt động -->
+        <div class="text-center py-5">
+            <i class="fas fa-check-circle fa-5x text-success mb-4"></i>
+            <h4 class="text-muted">Tuyệt vời! Không có đơn hàng nào đang chờ xử lý</h4>
+            <p class="text-muted">Tất cả đơn hàng đã được thanh toán và chuyển vào lịch sử.</p>
+            <button class="btn btn-success btn-lg mt-3" onclick="showOrderHistory()">
+                <i class="fas fa-history me-2"></i>Xem Lịch Sử Đơn Hàng
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+<!-- Âm thanh thông báo -->
+<audio id="notify-audio" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124bfae5b6.mp3" preload="auto"></audio>
+<!-- Modal chi tiết bill mới/cập nhật -->
+<div class="modal fade" id="billNotifyModal" tabindex="-1" aria-labelledby="billNotifyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="billNotifyModalLabel">Thông báo đơn hàng mới/cập nhật</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="bill-notify-body">
+        <!-- Nội dung sẽ render bằng JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="bill-notify-refresh">Cập nhật</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Modal popup gọi nhân viên -->
+<div class="modal fade" id="staffNotifyModal" tabindex="-1" aria-labelledby="staffNotifyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="staffNotifyModalLabel">Thông báo gọi nhân viên</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="staff-notify-body">
+        <!-- Nội dung sẽ render bằng JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="staff-notify-reset">Đánh dấu đã xử lý</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Lịch Sử Đơn Hàng -->
+<div class="modal fade" id="orderHistoryModal" tabindex="-1" aria-labelledby="orderHistoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="orderHistoryModalLabel">
+            <i class="fas fa-history me-2"></i>Lịch Sử Đơn Hàng Đã Thanh Toán
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Filter Section -->
+        <div class="row mb-4 p-3" style="background: #f8f9fa; border-radius: 8px;">
+          <div class="col-md-12 mb-2">
+            <h6 class="text-primary"><i class="fas fa-filter me-2"></i>Bộ Lọc Thời Gian</h6>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Loại filter:</label>
+            <select class="form-select" id="historyFilterType" onchange="toggleHistoryFilter()">
+              <option value="all">Tất cả đơn hàng</option>
+              <option value="date">Theo ngày cụ thể</option>
+              <option value="month">Theo tháng</option>
+              <option value="range">Khoảng thời gian</option>
+            </select>
+          </div>
+          <div class="col-md-3" id="historyDateFilter" style="display: none;">
+            <label class="form-label">Chọn ngày:</label>
+            <input type="date" class="form-control" id="historyTargetDate">
+          </div>
+          <div class="col-md-3" id="historyMonthFilter" style="display: none;">
+            <label class="form-label">Chọn tháng:</label>
+            <input type="month" class="form-control" id="historyTargetMonth">
+          </div>
+          <div class="col-md-2" id="historyFromFilter" style="display: none;">
+            <label class="form-label">Từ ngày:</label>
+            <input type="date" class="form-control" id="historyFromDate">
+          </div>
+          <div class="col-md-2" id="historyToFilter" style="display: none;">
+            <label class="form-label">Đến ngày:</label>
+            <input type="date" class="form-control" id="historyToDate">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" onclick="applyHistoryFilter()">
+              <i class="fas fa-search me-2"></i>Lọc
+            </button>
+          </div>
+        </div>
+        
+        <!-- Results Section -->
+        <div id="order-history-body">
+          <div class="text-center">
+              <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+              <p class="mt-2">Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times me-2"></i>Đóng
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Chi Tiết Đơn Hàng -->
+<div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title" id="orderDetailModalLabel">
+            <i class="fas fa-receipt me-2"></i>Chi Tiết Đơn Hàng
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="order-detail-body">
+        <div class="text-center">
+            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+            <p class="mt-2">Đang tải chi tiết...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times me-2"></i>Đóng
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let lastBillMap = {};
+let notified = false;
+let changedBills = [];
+let unreadCount = 0;
+let unreadNotifications = [];
+let staffCallCount = 0;
+let staffCallList = [];
+
+function getStatusBadge(status) {
+    const statusMap = {
+        'pending': {text: 'Chờ xử lý', icon: 'fa-hourglass-half', badge: 'badge-pending'},
+        'confirmed': {text: 'Đã gửi bếp', icon: 'fa-check-circle', badge: 'badge-confirmed'},
+        'in_progress': {text: 'Đang làm', icon: 'fa-utensils', badge: 'badge-in_progress'},
+        'done': {text: 'Đã xong', icon: 'fa-clipboard-check', badge: 'badge-done'},
+        'completed': {text: 'Hoàn thành', icon: 'fa-clipboard-check', badge: 'badge-completed'},
+        'sent_to_kitchen': {text: 'Đã gửi bếp', icon: 'fa-paper-plane', badge: 'badge-sent_to_kitchen'},
+        'paid': {text: 'Đã thanh toán', icon: 'fa-money-check-alt', badge: 'badge-paid'},
+        'cancelled': {text: 'Đã hủy', icon: 'fa-times-circle', badge: 'badge-cancelled'}
+    };
+    const s = statusMap[status] || {text: status, icon: 'fa-question-circle', badge: 'badge-secondary'};
+    return `<span class="badge badge-status ${s.badge}"><i class="fas ${s.icon} me-1"></i>${s.text}</span>`;
+}
+
+function renderBillsTable(bills) {
+    // Group by user_id
+    const grouped = {};
+    bills.forEach(bill => {
+        if (!grouped[bill.user_id]) grouped[bill.user_id] = [];
+        grouped[bill.user_id].push(bill);
+    });
+    let html = '';
+    Object.keys(grouped).forEach(uid => {
+        html += `<h4 class="mt-4 mb-2">Bàn ${uid}</h4>`;
+        html += `<table class="table table-bordered table-hover align-middle mb-4"><thead><tr><th>Order ID</th><th>Thời gian tạo</th><th>Tổng tiền</th><th>Trạng thái</th><th>Chi tiết</th></tr></thead><tbody>`;
+        grouped[uid].forEach(bill => {
+            html += `<tr data-order-id="${bill.order_id}">`;
+            html += `<td><span style="font-size:0.95em">${bill.order_id}</span></td>`;
+            html += `<td>${bill.created_at}</td>`;
+            html += `<td><b>${bill.total.toLocaleString()} đ</b></td>`;
+            html += `<td>${getStatusBadge(bill.status)}</td>`;
+            html += `<td><a href="/admin/bill/${bill.user_id}/${bill.order_id}" class="btn btn-sm btn-primary">Xem chi tiết</a></td>`;
+            html += `</tr>`;
+        });
+        html += `</tbody></table>`;
+    });
+    document.querySelector('.table-responsive').innerHTML = html;
+}
+
+function diffDishes(oldDishes, newDishes) {
+    // Trả về {added: [..], removed: [..], updated: [{dish, oldQty, newQty}]}
+    const oldMap = {};
+    oldDishes.forEach(item => { oldMap[item.dish] = item.quantity; });
+    const newMap = {};
+    newDishes.forEach(item => { newMap[item.dish] = item.quantity; });
+    const added = [];
+    const removed = [];
+    const updated = [];
+    Object.keys(newMap).forEach(dish => {
+        if (!(dish in oldMap)) {
+            added.push({dish, quantity: newMap[dish]});
+        } else if (oldMap[dish] !== newMap[dish]) {
+            updated.push({dish, oldQty: oldMap[dish], newQty: newMap[dish]});
+        }
+    });
+    Object.keys(oldMap).forEach(dish => {
+        if (!(dish in newMap)) {
+            removed.push({dish, quantity: oldMap[dish]});
+        }
+    });
+    return {added, removed, updated};
+}
+
+function getCurrentBillMapFromList(bills) {
+    let map = {};
+    bills.forEach(bill => {
+        map[bill.order_id] = {
+            status: bill.status,
+            created_at: bill.created_at,
+            total: bill.total,
+            user_id: bill.user_id,
+            detail_url: `/admin/bill/${bill.user_id}/${bill.order_id}`,
+            dishes: bill.dishes
+        };
+    });
+    return map;
+}
+
+function checkNewBills(callback) {
+    fetch('/api/admin/bills_status?_=' + Date.now(), {cache: 'no-store'})
+        .then(res => res.json())
+        .then(data => {
+            const bills = data.bills || [];
+            renderBillsTable(bills);
+            let newMap = getCurrentBillMapFromList(bills);
+            changedBills = [];
+            Object.keys(newMap).forEach(id => {
+                if (!lastBillMap[id]) {
+                    const notif = {type: 'new', id, ...newMap[id]};
+                    changedBills.push(notif);
+                    // Thêm vào unreadNotifications nếu chưa có
+                    if (!unreadNotifications.some(n => n.id === id && n.type === 'new')) {
+                        unreadNotifications.push(notif);
+                        unreadCount++;
+                    }
+                } else if (
+                    lastBillMap[id].status !== newMap[id].status ||
+                    lastBillMap[id].total !== newMap[id].total ||
+                    JSON.stringify(lastBillMap[id].dishes) !== JSON.stringify(newMap[id].dishes)
+                ) {
+                    const notif = {
+                        type: 'status',
+                        id,
+                        ...newMap[id],
+                        old_status: lastBillMap[id].status,
+                        old_total: lastBillMap[id].total,
+                        old_dishes: lastBillMap[id].dishes
+                    };
+                    changedBills.push(notif);
+                    if (!unreadNotifications.some(n => n.id === id && n.type === 'status' && n.status === notif.status && n.total === notif.total && JSON.stringify(n.dishes) === JSON.stringify(notif.dishes))) {
+                        unreadNotifications.push(notif);
+                        unreadCount++;
+                    }
+                }
+            });
+            if (unreadNotifications.length) {
+                document.getElementById('notify-badge').style.display = 'flex';
+                document.getElementById('notify-badge').textContent = unreadCount;
+                notified = true;
+                const audio = document.getElementById('notify-audio');
+                if (audio) { audio.currentTime = 0; audio.play(); }
+                shakeBell();
+                popBadge();
+                changedBills.forEach(bill => flashRow(bill.id));
+            }
+            lastBillMap = newMap;
+            if (callback) callback();
+        });
+}
+
+function pollStaffCalls() {
+    fetch('/api/admin/staff_calls?_=' + Date.now())
+        .then(res => res.json())
+        .then(data => {
+            staffCallList = data.calls || [];
+            if (staffCallList.length) {
+                document.getElementById('staff-badge').style.display = 'flex';
+                document.getElementById('staff-badge').textContent = staffCallList.length;
+                staffCallCount = staffCallList.length;
+                staffBellShake();
+                staffBadgePop();
+            } else {
+                document.getElementById('staff-badge').style.display = 'none';
+                staffCallCount = 0;
+            }
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Lần đầu fetch và render
+    fetch('/api/admin/bills_status').then(res => res.json()).then(data => {
+        const bills = data.bills || [];
+        renderBillsTable(bills);
+        lastBillMap = getCurrentBillMapFromList(bills);
+    });
+    setInterval(function() { checkNewBills(); pollStaffCalls(); }, 1500);
+    document.getElementById('notify-bell').onclick = function() {
+        showBillNotifyPopup();
+        // Reset sau khi popup đã hiện
+        unreadCount = 0;
+        unreadNotifications = [];
+        document.getElementById('notify-badge').style.display = 'none';
+    };
+    // Reset changedBills khi modal đóng
+    const billNotifyModal = document.getElementById('billNotifyModal');
+    billNotifyModal.addEventListener('hidden.bs.modal', function () {
+        changedBills = [];
+        unreadCount = 0;
+        unreadNotifications = [];
+        document.getElementById('notify-badge').style.display = 'none';
+        notified = false;
+    });
+    document.getElementById('bill-notify-refresh').onclick = function() {
+        location.reload();
+    };
+    document.getElementById('staff-bell').onclick = function() {
+        showStaffNotifyPopup();
+        // Không reset ngay, chỉ reset khi bấm nút trong popup
+    };
+    document.getElementById('staff-notify-reset').onclick = async function() {
+        await fetch('/api/admin/staff_calls', {method:'POST'});
+        staffCallList = [];
+        document.getElementById('staff-badge').style.display = 'none';
+        var modal = bootstrap.Modal.getInstance(document.getElementById('staffNotifyModal'));
+        if (modal) modal.hide();
+    };
+});
+
+function showBillNotifyPopup() {
+    let html = '';
+    if (unreadNotifications.length) {
+        // Gom nhóm theo user_id
+        const grouped = {};
+        unreadNotifications.forEach(bill => {
+            if (!grouped[bill.user_id]) grouped[bill.user_id] = [];
+            grouped[bill.user_id].push(bill);
+        });
+        html = '<ul class="list-group">';
+        Object.keys(grouped).forEach(uid => {
+            const bills = grouped[uid];
+            let changes = [];
+            let lastTime = '';
+            bills.forEach(bill => {
+                if (bill.type === 'new') {
+                    changes.push(`<div><i class='fas fa-bell text-success me-1'></i>Hóa đơn mới với tổng tiền <span class='text-success'>${bill.total.toLocaleString()} đ</span>. Trạng thái: ${getStatusBadge(bill.status)}</div>`);
+                    lastTime = bill.created_at;
+                } else if (bill.type === 'status') {
+                    let statusChange = bill.old_status !== bill.status ? `Chuyển trạng thái từ ${getStatusBadge(bill.old_status)} sang ${getStatusBadge(bill.status)}` : '';
+                    let totalChange = bill.old_total !== bill.total ? `Thay đổi tổng tiền từ <span class='text-warning'>${bill.old_total.toLocaleString()} đ</span> → <span class='text-success'>${bill.total.toLocaleString()} đ</span>` : '';
+                    let dishChange = '';
+                    if (bill.old_dishes && bill.dishes) {
+                        const diff = diffDishes(bill.old_dishes, bill.dishes);
+                        if (diff.added.length) {
+                            dishChange += `Thêm món: ${diff.added.map(d => `${d.dish} x${d.quantity}`).join(', ')}`;
+                        }
+                        if (diff.removed.length) {
+                            if (dishChange) dishChange += '; ';
+                            dishChange += `Xóa món: ${diff.removed.map(d => `${d.dish} x${d.quantity}`).join(', ')}`;
+                        }
+                        if (diff.updated.length) {
+                            if (dishChange) dishChange += '; ';
+                            dishChange += `Cập nhật số lượng: ${diff.updated.map(d => `${d.dish} ${d.oldQty}→${d.newQty}`).join(', ')}`;
+                        }
+                    }
+                    let msg = [dishChange, statusChange, totalChange].filter(Boolean).join('; ');
+                    if (msg) changes.push(`<div><i class='fas fa-sync-alt text-info me-1'></i>${msg}</div>`);
+                    lastTime = bill.created_at;
+                }
+            });
+            html += `<li class='list-group-item'>
+                <div class='fw-bold mb-1'><i class='fas fa-chair me-1'></i>Bàn ${uid}</div>
+                ${changes.join('<br>')}
+                <div class='text-secondary small mt-1'><i class='fas fa-clock me-1'></i>${lastTime}</div>
+            </li>`;
+        });
+        html += '</ul>';
+    } else {
+        html = '<div class="text-center text-muted">Không có đơn hàng mới hoặc cập nhật.</div>';
+    }
+    document.getElementById('bill-notify-body').innerHTML = html;
+    var modal = new bootstrap.Modal(document.getElementById('billNotifyModal'));
+    modal.show();
+    // Tự động đóng sau 6s nếu có bill mới/cập nhật
+    if (unreadNotifications.length) {
+        setTimeout(() => {
+            var modalEl = document.getElementById('billNotifyModal');
+            var modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+        }, 6000);
+    }
+}
+
+function showStaffNotifyPopup() {
+    let html = '';
+    if (staffCallList.length) {
+        html = '<ul class="list-group">';
+        staffCallList.forEach(call => {
+            html += `<li class='list-group-item'><i class='fas fa-chair me-2'></i><b>Bàn:</b> <span class='text-primary'>${call.table_id || call.user_id}</span> <span class='text-secondary small ms-2'><i class='fas fa-clock me-1'></i>${call.timestamp}</span></li>`;
+        });
+        html += '</ul>';
+    } else {
+        html = '<div class="text-center text-muted">Không có bàn nào đang gọi nhân viên.</div>';
+    }
+    document.getElementById('staff-notify-body').innerHTML = html;
+    var modal = new bootstrap.Modal(document.getElementById('staffNotifyModal'));
+    modal.show();
+}
+
+// Hàm hiển thị lịch sử đơn hàng
+async function showOrderHistory() {
+    // Reset filter khi mở modal
+    document.getElementById('historyFilterType').value = 'all';
+    toggleHistoryFilter();
+    
+    // Hiển thị modal ngay lập tức
+    const modal = new bootstrap.Modal(document.getElementById('orderHistoryModal'));
+    modal.show();
+    
+    try {
+        const response = await fetch('/api/orders/history');
+        if (!response.ok) {
+            throw new Error('Không thể tải lịch sử đơn hàng');
+        }
+        
+        const orders = await response.json();
+        displayOrderHistoryData(orders);
+    } catch (error) {
+        console.error('Error loading order history:', error);
+        document.getElementById('order-history-body').innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                <p class="text-danger">Có lỗi khi tải lịch sử đơn hàng: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Hàm toggle hiển thị filter
+function toggleHistoryFilter() {
+    const filterType = document.getElementById('historyFilterType').value;
+    
+    // Ẩn tất cả filter
+    document.getElementById('historyDateFilter').style.display = 'none';
+    document.getElementById('historyMonthFilter').style.display = 'none';
+    document.getElementById('historyFromFilter').style.display = 'none';
+    document.getElementById('historyToFilter').style.display = 'none';
+    
+    // Hiển thị filter tương ứng
+    switch(filterType) {
+        case 'date':
+            document.getElementById('historyDateFilter').style.display = 'block';
+            break;
+        case 'month':
+            document.getElementById('historyMonthFilter').style.display = 'block';
+            break;
+        case 'range':
+            document.getElementById('historyFromFilter').style.display = 'block';
+            document.getElementById('historyToFilter').style.display = 'block';
+            break;
+    }
+}
+
+// Hàm áp dụng filter
+async function applyHistoryFilter() {
+    const filterType = document.getElementById('historyFilterType').value;
+    
+    let url = '/api/orders/history';
+    let params = new URLSearchParams();
+    
+    switch(filterType) {
+        case 'date':
+            const targetDate = document.getElementById('historyTargetDate').value;
+            if (!targetDate) {
+                alert('Vui lòng chọn ngày cần lọc');
+                return;
+            }
+            params.append('filter_type', 'date');
+            params.append('date', targetDate);
+            break;
+            
+        case 'month':
+            const targetMonth = document.getElementById('historyTargetMonth').value;
+            if (!targetMonth) {
+                alert('Vui lòng chọn tháng cần lọc');
+                return;
+            }
+            params.append('filter_type', 'month');
+            params.append('month', targetMonth);
+            break;
+            
+        case 'range':
+            const fromDate = document.getElementById('historyFromDate').value;
+            const toDate = document.getElementById('historyToDate').value;
+            if (!fromDate || !toDate) {
+                alert('Vui lòng chọn đầy đủ khoảng thời gian');
+                return;
+            }
+            if (fromDate > toDate) {
+                alert('Ngày bắt đầu không thể lớn hơn ngày kết thúc');
+                return;
+            }
+            params.append('filter_type', 'range');
+            params.append('from_date', fromDate);
+            params.append('to_date', toDate);
+            break;
+            
+        case 'all':
+        default:
+            // Không cần params cho tất cả
+            break;
+    }
+    
+    if (params.toString()) {
+        url += '?' + params.toString();
+    }
+    
+    try {
+        // Hiển thị loading
+        document.getElementById('order-history-body').innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                <p class="mt-2">Đang lọc dữ liệu...</p>
+            </div>
+        `;
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Không thể lọc dữ liệu');
+        }
+        
+        const orders = await response.json();
+        displayOrderHistoryData(orders);
+        
+    } catch (error) {
+        console.error('Error filtering order history:', error);
+        document.getElementById('order-history-body').innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                <p class="text-danger">Có lỗi khi lọc dữ liệu: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Hàm riêng để hiển thị data (không tạo modal mới)
+function displayOrderHistoryData(orders) {
+    let html = '';
+    
+    if (orders.length === 0) {
+        html = '<div class="text-center py-4"><i class="fas fa-inbox fa-3x text-muted mb-3"></i><p class="text-muted">Không tìm thấy đơn hàng nào</p></div>';
+    } else {
+        // Thêm thông tin tổng kết
+        const totalAmount = orders.reduce((sum, order) => sum + order.total_amount, 0);
+        
+        html = `
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Tìm thấy <strong>${orders.length}</strong> đơn hàng với tổng doanh thu <strong>${totalAmount.toLocaleString()} ₫</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Mã Đơn</th>
+                            <th>Bàn</th>
+                            <th>Thời Gian Thanh Toán</th>
+                            <th>Tổng Tiền</th>
+                            <th>Chi Tiết</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        orders.forEach(order => {
+            const paymentDate = new Date(order.payment_time);
+            const paymentTime = paymentDate.toLocaleString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const shortOrderId = order.id.substring(0, 8) + '...';
+            
+            html += `
+                <tr>
+                    <td><code>${shortOrderId}</code></td>
+                    <td><i class="fas fa-chair text-primary"></i> ${order.table_name || 'Bàn ' + order.table_id}</td>
+                    <td><i class="fas fa-clock text-info"></i> ${paymentTime}</td>
+                    <td><strong class="text-success">${order.total_amount.toLocaleString()} ₫</strong></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-info" onclick="showOrderDetail('${order.id}')">
+                            <i class="fas fa-eye"></i> Xem
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+    
+    document.getElementById('order-history-body').innerHTML = html;
+}
+
+async function showOrderDetail(orderId) {
+    try {
+        // Đóng modal lịch sử trước khi mở modal chi tiết
+        const historyModal = bootstrap.Modal.getInstance(document.getElementById('orderHistoryModal'));
+        if (historyModal) {
+            historyModal.hide();
+        }
+        
+        // Đợi một chút để modal đóng hoàn toàn
+        setTimeout(async () => {
+            const response = await fetch(`/api/orders/${orderId}/detail`);
+            if (!response.ok) {
+                throw new Error('Không thể tải chi tiết đơn hàng');
+            }
+            
+            const order = await response.json();
+            displayOrderDetail(order);
+        }, 300);
+        
+    } catch (error) {
+        console.error('Error loading order detail:', error);
+        alert('Có lỗi khi tải chi tiết đơn hàng: ' + error.message);
+    }
+}
+
+function displayOrderDetail(order) {
+    const paymentTime = new Date(order.payment_time).toLocaleString('vi-VN');
+    
+    let itemsHtml = '';
+    order.items.forEach(item => {
+        itemsHtml += `
+            <tr>
+                <td>${item.dish_name}</td>
+                <td class="text-center">${item.quantity}</td>
+                <td class="text-end">${item.unit_price.toLocaleString()} ₫</td>
+                <td class="text-end"><strong>${item.total_price.toLocaleString()} ₫</strong></td>
+            </tr>
+        `;
+    });
+    
+    const html = `
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <p><strong>Mã đơn:</strong> <code>${order.id}</code></p>
+                <p><strong>Bàn:</strong> <i class="fas fa-chair text-primary"></i> ${order.table_name || 'Bàn ' + order.table_id}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Thời gian thanh toán:</strong> <i class="fas fa-clock text-info"></i> ${paymentTime}</p>
+                <p><strong>Tổng tiền:</strong> <span class="badge bg-success fs-6">${order.total_amount.toLocaleString()} ₫</span></p>
+            </div>
+        </div>
+        <h6><i class="fas fa-utensils me-2"></i>Chi tiết món ăn:</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Món ăn</th>
+                        <th class="text-center">Số lượng</th>
+                        <th class="text-end">Đơn giá</th>
+                        <th class="text-end">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHtml}
+                </tbody>
+                <tfoot class="table-dark">
+                    <tr>
+                        <th colspan="3" class="text-end">Tổng cộng:</th>
+                        <th class="text-end">${order.total_amount.toLocaleString()} ₫</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="text-center mt-3">
+            <button class="btn btn-secondary" onclick="backToOrderHistory()">
+                <i class="fas fa-arrow-left me-2"></i>Quay lại lịch sử
+            </button>
+        </div>
+    `;
+    
+    document.getElementById('order-detail-body').innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+    modal.show();
+}
+
+// Hàm quay lại lịch sử đơn hàng
+function backToOrderHistory() {
+    const detailModal = bootstrap.Modal.getInstance(document.getElementById('orderDetailModal'));
+    if (detailModal) {
+        detailModal.hide();
+    }
+    
+    // Đợi modal đóng xong rồi mở lại modal lịch sử
+    setTimeout(() => {
+        const historyModal = new bootstrap.Modal(document.getElementById('orderHistoryModal'));
+        historyModal.show();
+    }, 300);
+}
+
+// Thêm event listeners để dọn dẹp modal backdrop
+document.addEventListener('DOMContentLoaded', function() {
+    // Cleanup modal backdrop khi modal đóng
+    const orderHistoryModal = document.getElementById('orderHistoryModal');
+    const orderDetailModal = document.getElementById('orderDetailModal');
+    
+    orderHistoryModal.addEventListener('hidden.bs.modal', function () {
+        // Dọn dẹp backdrop còn sót lại
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => {
+            if (backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        });
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    });
+    
+    orderDetailModal.addEventListener('hidden.bs.modal', function () {
+        // Dọn dẹp backdrop còn sót lại
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => {
+            if (backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        });
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    });
+});
+
+function flashRow(orderId) {
+    // Tìm dòng theo orderId và thêm class row-flash
+    const row = document.querySelector(`tr[data-order-id='${orderId}']`);
+    if (row) {
+        row.classList.add('row-flash');
+        setTimeout(() => row.classList.remove('row-flash'), 1500);
+    }
+}
+function shakeBell() {
+    const bell = document.getElementById('notify-bell');
+    if (bell) {
+        bell.classList.add('bell-shake');
+        setTimeout(() => bell.classList.remove('bell-shake'), 700);
+    }
+}
+function popBadge() {
+    const badge = document.getElementById('notify-badge');
+    if (badge) {
+        badge.classList.add('badge-pop');
+        setTimeout(() => badge.classList.remove('badge-pop'), 700);
+    }
+}
+function staffBellShake() {
+    const bell = document.getElementById('staff-bell');
+    if (bell) {
+        bell.classList.add('bell-shake');
+        setTimeout(() => bell.classList.remove('bell-shake'), 700);
+    }
+}
+function staffBadgePop() {
+    const badge = document.getElementById('staff-badge');
+    if (badge) {
+        badge.classList.add('badge-pop');
+        setTimeout(() => badge.classList.remove('badge-pop'), 700);
+    }
+}
+</script>
+</body>
+</html> 

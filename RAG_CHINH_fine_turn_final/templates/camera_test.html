@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            text-align: center; 
+        }
+        video { 
+            border: 2px solid #007bff; 
+            margin: 20px 0; 
+            max-width: 100%;
+        }
+        .status { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px;
+        }
+        .success { 
+            background: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb;
+        }
+        .error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb;
+        }
+        .info { 
+            background: #d1ecf1; 
+            color: #0c5460; 
+            border: 1px solid #bee5eb;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎥 Camera Test Page</h1>
+    <p>This page will help diagnose camera access issues</p>
+    
+    <div id="browser-info" class="status info">
+        <strong>Browser Info:</strong> <span id="user-agent"></span>
+    </div>
+    
+    <div id="protocol-info" class="status info">
+        <strong>Protocol:</strong> <span id="protocol"></span>
+    </div>
+    
+    <div id="permissions-info" class="status info">
+        <strong>Camera Permissions:</strong> <span id="permissions">Checking...</span>
+    </div>
+    
+    <video id="video" width="480" height="360" autoplay playsinline></video>
+    
+    <div id="status" class="status info">Initializing...</div>
+    
+    <div>
+        <button onclick="testCamera()">Test Camera</button>
+        <button onclick="checkPermissions()">Check Permissions</button>
+        <button onclick="location.reload()">Refresh</button>
+    </div>
+    
+    <div id="debug-info" style="margin-top: 20px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;">
+        <h3>Debug Information:</h3>
+        <ul id="debug-list"></ul>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const statusDiv = document.getElementById('status');
+        const debugList = document.getElementById('debug-list');
+        
+        // Display browser info
+        document.getElementById('user-agent').textContent = navigator.userAgent;
+        document.getElementById('protocol').textContent = location.protocol + '//' + location.host;
+        
+        function addDebugInfo(message) {
+            const li = document.createElement('li');
+            li.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            debugList.appendChild(li);
+            console.log(message);
+        }
+        
+        function updateStatus(message, type = 'info') {
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + type;
+            addDebugInfo('Status: ' + message);
+        }
+        
+        async function checkPermissions() {
+            try {
+                addDebugInfo('Checking camera permissions...');
+                
+                if (!navigator.mediaDevices) {
+                    document.getElementById('permissions').textContent = 'Not supported (no mediaDevices)';
+                    updateStatus('Browser does not support camera access', 'error');
+                    return;
+                }
+                
+                if (!navigator.mediaDevices.getUserMedia) {
+                    document.getElementById('permissions').textContent = 'Not supported (no getUserMedia)';
+                    updateStatus('Browser does not support getUserMedia', 'error');
+                    return;
+                }
+                
+                const result = await navigator.permissions.query({name: 'camera'});
+                document.getElementById('permissions').textContent = result.state;
+                addDebugInfo('Camera permission state: ' + result.state);
+                
+                if (result.state === 'denied') {
+                    updateStatus('Camera permission denied. Please allow camera access and refresh.', 'error');
+                } else if (result.state === 'granted') {
+                    updateStatus('Camera permission granted', 'success');
+                } else {
+                    updateStatus('Camera permission prompt required', 'info');
+                }
+                
+            } catch (error) {
+                document.getElementById('permissions').textContent = 'Check failed: ' + error.message;
+                addDebugInfo('Permission check failed: ' + error.message);
+            }
+        }
+        
+        async function testCamera() {
+            try {
+                addDebugInfo('Starting camera test...');
+                updateStatus('Requesting camera access...', 'info');
+                
+                // Stop any existing stream
+                if (video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                }
+                
+                const constraints = {
+                    video: {
+                        width: { ideal: 480 },
+                        height: { ideal: 360 },
+                        facingMode: 'user'
+                    }
+                };
+                
+                addDebugInfo('Calling getUserMedia with constraints: ' + JSON.stringify(constraints));
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                addDebugInfo('Camera access granted');
+                addDebugInfo('Stream tracks: ' + stream.getTracks().length);
+                
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = function() {
+                    addDebugInfo('Video metadata loaded');
+                    addDebugInfo('Video dimensions: ' + video.videoWidth + 'x' + video.videoHeight);
+                    updateStatus('Camera is working! Video size: ' + video.videoWidth + 'x' + video.videoHeight, 'success');
+                };
+                
+                video.onerror = function(error) {
+                    addDebugInfo('Video error: ' + error.message);
+                    updateStatus('Video error: ' + error.message, 'error');
+                };
+                
+            } catch (error) {
+                addDebugInfo('Camera access failed: ' + error.name + ' - ' + error.message);
+                updateStatus('Camera failed: ' + error.name + ' - ' + error.message, 'error');
+                
+                // Provide specific help based on error type
+                if (error.name === 'NotAllowedError') {
+                    addDebugInfo('HELP: User denied camera permission or browser blocked access');
+                } else if (error.name === 'NotFoundError') {
+                    addDebugInfo('HELP: No camera found on device');
+                } else if (error.name === 'NotReadableError') {
+                    addDebugInfo('HELP: Camera is being used by another application');
+                } else if (error.name === 'OverconstrainedError') {
+                    addDebugInfo('HELP: Camera constraints cannot be satisfied');
+                } else if (error.name === 'SecurityError') {
+                    addDebugInfo('HELP: Security error - may need HTTPS');
+                }
+            }
+        }
+        
+        // Auto-run checks on page load
+        window.onload = function() {
+            addDebugInfo('Page loaded');
+            checkPermissions();
+            
+            // Auto-test camera after a short delay
+            setTimeout(testCamera, 1000);
+        };
+    </script>
+</body>
+</html>
